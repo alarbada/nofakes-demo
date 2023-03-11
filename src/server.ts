@@ -154,5 +154,5 @@ const server = http.createServer((req, res) => {
 })
 
 server.listen(config.port, () => {
-    console.log('Server running at http://localhost:3000')
+    logger('info', `Server running at http://localhost:${config.port}`)
 })
