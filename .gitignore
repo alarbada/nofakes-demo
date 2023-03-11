@@ -4,6 +4,9 @@ dist
 
 __tests__
 
+# server related
+config.json
+
 # editor related
 *.vim
 
