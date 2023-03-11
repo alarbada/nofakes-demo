@@ -4,6 +4,8 @@
   "description": "A simple backend exercise to show programming experience",
   "main": "src/server.ts",
   "scripts": {
+    "start": "node --watch ./dist/server.js",
+    "dev": "node ./scripts/dev.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Guillem Garcia",

@@ -1,0 +1,9 @@
+# node related
+node_modules
+dist
+
+# editor related
+*.vim
+
+# misc
+TODO.md
