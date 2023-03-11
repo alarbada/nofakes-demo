@@ -5,14 +5,18 @@
   "main": "src/server.ts",
   "scripts": {
     "start": "node --watch ./dist/server.js",
-    "dev": "node ./scripts/dev.mjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node ./scripts/clean.mjs && node ./scripts/dev.mjs",
+    "test": "jest __tests__",
+    "clean": "node ./scripts/clean.mjs"
   },
   "author": "Guillem Garcia",
   "license": "ISC",
   "devDependencies": {
+    "@types/jest": "29.4.0",
     "@types/node": "18.15.0",
     "esbuild": "0.17.11",
+    "glob": "9.2.1",
+    "jest": "29.5.0",
     "typescript": "5.0.0-beta"
   }
 }
