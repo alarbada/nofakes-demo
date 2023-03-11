@@ -9,8 +9,8 @@
   "author": "Guillem Garcia",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "~18.15.0",
-    "esbuild": "~0.17.11",
-    "typescript": "~5.0.0-beta"
+    "@types/node": "18.15.0",
+    "esbuild": "0.17.11",
+    "typescript": "5.0.0-beta"
   }
 }
