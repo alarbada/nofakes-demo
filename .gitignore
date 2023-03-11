@@ -1,0 +1,12 @@
+# node related
+node_modules
+dist
+
+__tests__
+
+# editor related
+*.vim
+
+# misc
+TODO.md
+
