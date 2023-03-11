@@ -1,0 +1,11 @@
+{
+  "name": "nofakes-demo",
+  "version": "1.0.0",
+  "description": "A simple backend exercise to show programming experience",
+  "main": "src/server.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Guillem Garcia",
+  "license": "ISC"
+}
