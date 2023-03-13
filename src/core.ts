@@ -1,14 +1,18 @@
+import { z } from 'zod'
+
 // This little helper function will help us with exhaustiveness type checking
 function assertNever(x: never): never {
     throw new Error("Unexpected object: " + x);
 }
 
 // The necessary input to create a new online business record
-export type CreateOnlineBusinessInput = {
-    name: string
-    website: string
-    email: string
-}
+const createOnlineBusinessInput = z.object({
+    name: z.string(),
+    website: z.string(),
+    email: z.string(),
+})
+
+export type CreateOnlineBusinessInput = z.infer<typeof createOnlineBusinessInput>
 
 // All data that represents an online business record
 export type OnlineBusiness = {
@@ -20,12 +24,14 @@ export type OnlineBusiness = {
 }
 
 // The necessary input to create a new physical business record
-export type CreatePhysicalBusinessInput = {
-    name: string
-    address: string
-    phone: string
-    email: string
-}
+export const createPhysicalBusinessInput = z.object({
+    name: z.string(),
+    address: z.string(),
+    phone: z.string(),
+    email: z.string(),
+})
+
+export type CreatePhysicalBusinessInput = z.infer<typeof createPhysicalBusinessInput>
 
 // All data that represents a physical business record
 export type PhysicalBusiness = {
@@ -37,10 +43,13 @@ export type PhysicalBusiness = {
     total_reviews: number
 }
 
+export const createBusinessInput = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('online'), value: createOnlineBusinessInput }),
+    z.object({ type: z.literal('physical'), value: createPhysicalBusinessInput }),
+])
+
 // All allowed inputs that can be used to create a new business record
-export type CreateBusinessInput =
-    | { type: 'online', value: CreateOnlineBusinessInput }
-    | { type: 'physical', value: CreatePhysicalBusinessInput }
+export type CreateBusinessInput = z.infer<typeof createBusinessInput>
 
 // All possible business records. This may or may not be converted to a discriminated union,
 // right now we just use this type to serialize all business info types to JSON.
