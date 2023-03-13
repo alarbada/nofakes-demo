@@ -46,13 +46,9 @@ class InMemStore implements core.BusinessRepository {
     }
 }
 
-const store = new InMemStore()
-
 function logger(lvl: core.LogLevels, msg: string) {
     console.log(`[${lvl}] ${msg}`)
 }
-
-const businessOps = new core.BusinessOperations(store, logger)
 
 function writeError(res: http.ServerResponse, err: Error) {
     res.writeHead(400, { 'Content-Type': 'text/plain' })
@@ -114,67 +110,88 @@ function getPathParam(url: URL): string | undefined {
     return param
 }
 
-// createBusinessHandler will try to create a new business.
-// If the request body is invalid, it will return a 400 error.
-async function createBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse) {
-    const json = await parseJson(req)
-    const parsedJson = core.createBusinessInput.safeParse(json)
-    if (!parsedJson.success) {
-        writeError(res, new Error('Invalid request body'))
-        return
-    }
+export function startServer(): { stop: () => Promise<void> } {
+    const store = new InMemStore()
+    const businessOps = new core.BusinessOperations(store, logger)
 
-    const result = await businessOps.createBusiness(parsedJson.data)
-
-    if (result instanceof Error) writeError(res, result)
-    res.writeHead(201, { 'Content-Type': 'text/plain' })
-    res.end()
-    return
-}
-
-// getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
-async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
-    const result = await businessOps.getBusiness(id)
-
-    // TODO: We need to distinguish between database errors and business not found errors,
-    // so we can return a 404 in the latter case
-    if (result instanceof Error) {
-        writeError(res, result)
-        return
-    }
-
-    writeJson(res, result)
-    return
-}
-
-async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
-    const url = new URL(req.url!, `http://${req.headers.host}`)
-
-    if (matchesPath(url, '/business')) {
-        if (req.method === 'POST') {
-            await createBusinessHandler(req, res)
+    // createBusinessHandler will try to create a new business.
+    // If the request body is invalid, it will return a 400 error.
+    async function createBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse) {
+        const json = await parseJson(req)
+        const parsedJson = core.createBusinessInput.safeParse(json)
+        if (!parsedJson.success) {
+            writeError(res, new Error('Invalid request body'))
             return
         }
 
-        const id = getPathParam(url)
-        if (req.method === 'GET' && id !== undefined) {
-            await getBusinessHandler(req, res, id)
-            return
-        }
+        const result = await businessOps.createBusiness(parsedJson.data)
+
+        if (result instanceof Error) writeError(res, result)
+        res.writeHead(201, { 'Content-Type': 'text/plain' })
+        res.end()
+        return
     }
 
-    res.writeHead(404, { 'Content-Type': 'text/plain' })
-    res.end(`No route for ${req.method} ${req.url}`)
-}
+    // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
+    async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
+        const result = await businessOps.getBusiness(id)
 
-const server = http.createServer((req, res) => {
-    mainHandler(req, res).catch(err => {
-        logger('error', err)
-        res.writeHead(500, { 'Content-Type': 'text/plain' })
-        res.end('Internal server error')
+        // TODO: We need to distinguish between database errors and business not found errors,
+        // so we can return a 404 in the latter case
+        if (result instanceof Error) {
+            writeError(res, result)
+            return
+        }
+
+        writeJson(res, result)
+        return
+    }
+
+    async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
+        const url = new URL(req.url!, `http://${req.headers.host}`)
+
+        if (matchesPath(url, '/business')) {
+            if (req.method === 'POST') {
+                await createBusinessHandler(req, res)
+                return
+            }
+
+            const id = getPathParam(url)
+            if (req.method === 'GET' && id !== undefined) {
+                await getBusinessHandler(req, res, id)
+                return
+            }
+        }
+
+        res.writeHead(404, { 'Content-Type': 'text/plain' })
+        res.end(`No route for ${req.method} ${req.url}`)
+    }
+
+
+    const server = http.createServer((req, res) => {
+        mainHandler(req, res).catch(err => {
+            logger('error', err)
+            res.writeHead(500, { 'Content-Type': 'text/plain' })
+            res.end('Internal server error')
+        })
     })
-})
 
-server.listen(config.port, () => {
-    logger('info', `Server running at http://localhost:${config.port}`)
-})
+    server.listen(config.port, () => {
+        logger('info', `Server running at http://localhost:${config.port}`)
+    })
+
+    function stopServer(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            server.close(err => {
+                if (err) {
+                    reject(err)
+                } else {
+                    resolve()
+                }
+            })
+        })
+    }
+
+    return { stop: stopServer }
+}
+
