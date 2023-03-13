@@ -69,8 +69,7 @@ function writeText(res: http.ServerResponse, text: string) {
     res.end(text)
 }
 
-// TODO: this is not safe! json needs to be of type unknown
-function parseJson(req: http.IncomingMessage): Promise<any> {
+function parseJson(req: http.IncomingMessage): Promise<unknown> {
     return new Promise((resolve, reject) => {
         let body = '';
         req.once('data', chunk => {
@@ -115,28 +114,51 @@ function getPathParam(url: URL): string | undefined {
     return param
 }
 
+// createBusinessHandler will try to create a new business.
+// If the request body is invalid, it will return a 400 error.
+async function createBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse) {
+    const json = await parseJson(req)
+    const parsedJson = core.createBusinessInput.safeParse(json)
+    if (!parsedJson.success) {
+        writeError(res, new Error('Invalid request body'))
+        return
+    }
+
+    const result = await businessOps.createBusiness(parsedJson.data)
+
+    if (result instanceof Error) writeError(res, result)
+    res.writeHead(201, { 'Content-Type': 'text/plain' })
+    res.end()
+    return
+}
+
+// getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
+async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
+    const result = await businessOps.getBusiness(id)
+
+    // TODO: We need to distinguish between database errors and business not found errors,
+    // so we can return a 404 in the latter case
+    if (result instanceof Error) {
+        writeError(res, result)
+        return
+    }
+
+    writeJson(res, result)
+    return
+}
+
 async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url!, `http://${req.headers.host}`)
 
     if (matchesPath(url, '/business')) {
         if (req.method === 'POST') {
-            // TODO: this is not safe! json needs to be validated with something like Zod.
-            const json: core.CreateBusinessInput = await parseJson(req)
-            const result = await businessOps.createBusiness(json)
-
-            if (result instanceof Error) writeError(res, result)
-            res.writeHead(201, { 'Content-Type': 'text/plain' })
-            res.end()
+            await createBusinessHandler(req, res)
             return
         }
 
         const id = getPathParam(url)
         if (req.method === 'GET' && id !== undefined) {
-
-            const result = await businessOps.getBusiness(id)
-            if (result instanceof Error) writeError(res, result)
-
-            writeJson(res, result)
+            await getBusinessHandler(req, res, id)
             return
         }
     }
