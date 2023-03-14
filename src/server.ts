@@ -7,6 +7,9 @@ export function createInMemDb(): core.Repositories {
     const businesses: core.Business[] = []
     let businessIdCounter = 0
 
+    const reviews: core.Review[] = []
+    let reviewsIdCounter = 0
+
     return {
         business: {
             async createOnlineBusiness(data: core.CreateOnlineBusinessInput): core.RepositoryCreateResult<core.OnlineBusiness> {
@@ -49,7 +52,21 @@ export function createInMemDb(): core.Repositories {
         },
         reviews: {
             async createReview(businessId: string, data: core.CreateReviewInput): core.RepositoryCreateResult<core.Review> {
-                throw new Error('Method not implemented.')
+                const business = businesses.find(b => b.id === businessId)
+                if (!business) return { type: 'database_error', error: new Error('Business not found') }
+
+                business.total_reviews += 1
+                reviewsIdCounter += 1
+
+                const newReview: core.Review = {
+                    business_id: businessId,
+                    username: data.username,
+                    rating: data.rating,
+                    text: data.text,
+                }
+                reviews.push(newReview)
+
+                return { type: 'success', value: newReview }
             }
         },
     }
