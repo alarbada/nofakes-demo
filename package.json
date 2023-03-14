@@ -8,6 +8,7 @@
     "debug": "node --inspect ./dist/server.js",
     "dev": "node ./scripts/clean.mjs && node ./scripts/dev.mjs",
     "test": "jest __tests__",
+    "test-debug": "node --inspect-brk node_modules/.bin/jest --runInBand __tests__",
     "clean": "node ./scripts/clean.mjs"
   },
   "author": "Guillem Garcia",
