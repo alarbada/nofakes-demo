@@ -2,47 +2,56 @@ import http from 'http'
 import config from '../config.json'
 import * as core from './core'
 
-// InMemStore is a simple in-memory store that implements the BusinessRepository interface.
-export class InMemStore implements core.BusinessRepository {
-    private businesses: core.Business[] = []
-    private nextId = 0
+export function createInMemDb(): core.Repositories {
 
-    async createOnlineBusiness(data: core.CreateOnlineBusinessInput): Promise<core.OnlineBusiness | Error> {
-        this.nextId += 1
+    const businesses: core.Business[] = []
+    let businessIdCounter = 0
 
-        const business: core.OnlineBusiness = {
-            id: this.nextId.toString(),
-            name: data.name,
-            website: data.website,
-            email: data.email,
-            total_reviews: 0
-        }
-        this.businesses.push(business)
+    return {
+        business: {
+            async createOnlineBusiness(data: core.CreateOnlineBusinessInput): core.RepositoryCreateResult<core.OnlineBusiness> {
+                businessIdCounter += 1
 
-        return business
-    }
+                const business: core.OnlineBusiness = {
+                    id: businessIdCounter.toString(),
+                    name: data.name,
+                    website: data.website,
+                    email: data.email,
+                    total_reviews: 0
+                }
+                businesses.push(business)
 
-    async createPhysicalBusiness(data: core.CreatePhysicalBusinessInput): Promise<core.PhysicalBusiness | Error> {
-        this.nextId += 1
+                return { type: 'success', value: business }
+            },
 
-        const business: core.PhysicalBusiness = {
-            id: this.nextId.toString(),
-            name: data.name,
-            address: data.address,
-            phone: data.phone,
-            email: data.email,
-            total_reviews: 0
-        }
-        this.businesses.push(business)
+            async createPhysicalBusiness(data: core.CreatePhysicalBusinessInput): core.RepositoryCreateResult<core.PhysicalBusiness> {
+                businessIdCounter += 1
 
-        return business
-    }
+                const business: core.PhysicalBusiness = {
+                    id: businessIdCounter.toString(),
+                    name: data.name,
+                    address: data.address,
+                    phone: data.phone,
+                    email: data.email,
+                    total_reviews: 0
+                }
+                businesses.push(business)
 
-    async getBusiness(id: string): Promise<core.OnlineBusiness | core.PhysicalBusiness | Error> {
-        const business = this.businesses.find(b => b.id === id)
-        if (!business) return new Error(`No business with id ${id}`)
+                return { type: 'success', value: business }
+            },
 
-        return business
+            async getBusiness(id: string): core.RepositoryFetchResult<core.Business> {
+                const business = businesses.find(b => b.id === id)
+                if (!business) return { type: 'record_not_found' }
+
+                return { type: 'success', value: business }
+            }
+        },
+        reviews: {
+            async createReview(businessId: string, data: core.CreateReviewInput): core.RepositoryCreateResult<core.Review> {
+                throw new Error('Method not implemented.')
+            }
+        },
     }
 }
 
@@ -110,8 +119,8 @@ function getPathParam(url: URL): string | undefined {
     return param
 }
 
-export function startServer(log: core.Logger, db: core.BusinessRepository): { stop: () => Promise<void> } {
-    const businessOps = new core.BusinessOperations(db, log)
+export function startServer(log: core.Logger, db: core.Repositories): { stop: () => Promise<void> } {
+    const businessOps = new core.Operations(db, log)
 
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
     async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
