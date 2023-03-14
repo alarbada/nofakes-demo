@@ -120,11 +120,11 @@ function getPathParam(url: URL): string | undefined {
 }
 
 export function startServer(log: core.Logger, db: core.Repositories): { stop: () => Promise<void> } {
-    const businessOps = new core.Operations(db, log)
+    const coreOps = new core.Operations(db, log)
 
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
-    async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
-        const result = await businessOps.getBusiness(id)
+    async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, businessId: string) {
+        const result = await coreOps.getBusiness(businessId)
 
         // TODO: We need to distinguish between database errors and business not found errors,
         // so we can return a 404 in the latter case
@@ -137,13 +137,43 @@ export function startServer(log: core.Logger, db: core.Repositories): { stop: ()
         return
     }
 
+    async function postReviewHandler(req: http.IncomingMessage, res: http.ServerResponse, businessId: string) {
+        const jsonData = await parseJson(req)
+        const parseResult = core.createReviewInput.safeParse(jsonData)
+        if (!parseResult.success) {
+            writeError(res, new Error('Invalid data'))
+            return
+        }
+
+        const result = await coreOps.createReview(businessId, parseResult.data)
+        if (result instanceof Error) {
+            writeError(res, result)
+            return
+        }
+
+        writeJson(res, result)
+    }
+
     async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
         const url = new URL(req.url!, `http://${req.headers.host}`)
 
+        // Regex pattern matching works for now, but I completely agree that is not the best way to do it.
+        // Regexes are compiled for every single request, which is expensive.
+        // The reason I went with regexes is because I wanted to keep the code with as
+        // few dependencies as possible.
+
         if (matchesPath(url, '/business')) {
-            const id = getPathParam(url)
-            if (req.method === 'GET' && id !== undefined) {
-                await getBusinessHandler(req, res, id)
+            // GET /business/:id
+            if (req.method === 'GET' && /\/business\/[a-zA-Z0-9]+$/.test(url.pathname)) {
+                const id = getPathParam(url)
+                await getBusinessHandler(req, res, id!)
+                return
+            }
+
+            // POST /business/:id/reviews
+            if (req.method === 'POST' && /\/business\/[a-zA-Z0-9]+\/reviews$/.test(url.pathname)) {
+                const [, id, ,] = url.pathname.split('/')
+                await postReviewHandler(req, res, id!)
                 return
             }
         }
