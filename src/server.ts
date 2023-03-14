@@ -3,7 +3,7 @@ import config from '../config.json'
 import * as core from './core'
 
 // InMemStore is a simple in-memory store that implements the BusinessRepository interface.
-class InMemStore implements core.BusinessRepository {
+export class InMemStore implements core.BusinessRepository {
     private businesses: core.Business[] = []
     private nextId = 0
 
@@ -110,9 +110,8 @@ function getPathParam(url: URL): string | undefined {
     return param
 }
 
-export function startServer(): { stop: () => Promise<void> } {
-    const store = new InMemStore()
-    const businessOps = new core.BusinessOperations(store, logger)
+export function startServer(log: core.Logger, db: core.BusinessRepository): { stop: () => Promise<void> } {
+    const businessOps = new core.BusinessOperations(db, log)
 
     // createBusinessHandler will try to create a new business.
     // If the request body is invalid, it will return a 400 error.
@@ -170,14 +169,14 @@ export function startServer(): { stop: () => Promise<void> } {
 
     const server = http.createServer((req, res) => {
         mainHandler(req, res).catch(err => {
-            logger('error', err)
+            log('error', err)
             res.writeHead(500, { 'Content-Type': 'text/plain' })
             res.end('Internal server error')
         })
     })
 
     server.listen(config.port, () => {
-        logger('info', `Server running at http://localhost:${config.port}`)
+        log('info', `Server running at http://localhost:${config.port}`)
     })
 
     function stopServer(): Promise<void> {
