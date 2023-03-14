@@ -55,10 +55,32 @@ export type CreateBusinessInput = z.infer<typeof createBusinessInput>
 // right now we just use this type to serialize all business info types to JSON.
 export type Business = OnlineBusiness | PhysicalBusiness
 
-// The business repository interface. This is the interface that the business operations will use
-// to interact with an external database. Note that the business operations will not know anything
-// about the database implementation, so we can swap out the database implementation without
-// having to change any business operations.
+export type LogLevels = 'info' | 'error' | 'warn' | 'debug'
+export type Logger = (lvl: LogLevels, msg: string) => void
+
+export const createReviewInput = z.object({
+    text: z.string(),
+    rating: z.number(),
+    username: z.string(),
+})
+
+export type CreateReviewInput = z.infer<typeof createReviewInput>
+
+export type Review = {
+    // "business_id" is not explicitly defined in the requirements,
+    // but we need it in order to get reviews of a business
+    business_id: string
+
+    text: string
+    rating: number
+    username: string
+}
+
+export type ReviewRepository = {
+    createReview: (businessId: string, data: CreateReviewInput) => Promise<Review | Error>
+}
+
+
 export type BusinessRepository = {
     createOnlineBusiness: (data: CreateOnlineBusinessInput) => Promise<OnlineBusiness | Error>
     createPhysicalBusiness: (data: CreatePhysicalBusinessInput) => Promise<PhysicalBusiness | Error>
@@ -66,17 +88,24 @@ export type BusinessRepository = {
     getBusiness: (id: string) => Promise<OnlineBusiness | PhysicalBusiness | Error>
 }
 
-export type LogLevels = 'info' | 'error' | 'warn' | 'debug'
-export type Logger = (lvl: LogLevels, msg: string) => void
+// All repositories used in our REST API. This is the interface that the business operations will use
+// to interact with an external database. Note that the repositories will not know anything
+// about the database implementation, so we can swap out database implementations without
+// having to change much core logic.
+export type Repositories = {
+    business: BusinessRepository
+    reviews: ReviewRepository
+}
 
-export class BusinessOperations {
-    // Here we use the constructor to inject the dependencies
+// Operations will hold all core operations that can be performed on our REST API
+export class Operations {
     constructor(
-        public db: BusinessRepository,
+        public db: Repositories,
         public log: Logger
     ) { }
 
-    // createBusiness will run the corresponding core logic to add new business data.
+    // createBusiness will create a new business record, and return an error if the business
+    // has an invalid name.
     async createBusiness(input: CreateBusinessInput): Promise<void | Error> {
         if (input.type === 'online') {
             const business = input.value
@@ -84,7 +113,7 @@ export class BusinessOperations {
                 return new Error(`Business name is too long`)
             }
 
-            const result = await this.db.createOnlineBusiness(business)
+            const result = await this.db.business.createOnlineBusiness(business)
             if (result instanceof Error) return result
 
             this.log('info', `Created new business ${result.name}`)
@@ -95,7 +124,7 @@ export class BusinessOperations {
                 return new Error(`Business name is too long`)
             }
 
-            const result = await this.db.createPhysicalBusiness(business)
+            const result = await this.db.business.createPhysicalBusiness(business)
             if (result instanceof Error) return result
 
             this.log('info', `Created new business ${result.name}`)
@@ -105,12 +134,35 @@ export class BusinessOperations {
         assertNever(input)
     }
 
-    // getBusiness will run the corresponding core logic to retrieve business data.
+    // getBusiness will return a business record, or an error if the business does not exist.
     async getBusiness(businessId: string): Promise<Business | Error> {
-        const result = await this.db.getBusiness(businessId)
+        const result = await this.db.business.getBusiness(businessId)
         if (result instanceof Error) return result
 
         this.log('info', `Retrieved business ${result.name}`)
         return result
+    }
+
+    // createReview will create a new review for a business, and return an error if the review
+    // is invalid.
+    async createReview(businessId: string, input: CreateReviewInput): Promise<void | Error> {
+        if (input.text.length < 20) {
+            return new Error('Review text is too short')
+        } else if (input.text.length > 500) {
+            return new Error('Review text is too long')
+        }
+
+        // Rating. Between 1 and 5. Without decimals.
+        if (input.rating < 1 || input.rating > 5) {
+            return new Error('Rating is out of range')
+        } else if (input.rating % 1 !== 0) {
+            return new Error('Rating must be an integer')
+        }
+
+        const result = await this.db.reviews.createReview(businessId, input)
+        if (result instanceof Error) return result
+
+        this.log('info', `Created new review for business ${businessId}`)
+        return
     }
 }
