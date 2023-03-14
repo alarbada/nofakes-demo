@@ -76,16 +76,26 @@ export type Review = {
     username: string
 }
 
+export type RepositoryCreateResult<T> = Promise<
+    | { type: 'success', value: T }
+    | { type: 'database_error', error: Error }
+>
+
+export type RepositoryFetchResult<T> = Promise<
+    | { type: 'success', value: T }
+    | { type: 'record_not_found' }
+    | { type: 'database_error', error: Error }
+>
+
 export type ReviewRepository = {
-    createReview: (businessId: string, data: CreateReviewInput) => Promise<Review | Error>
+    createReview: (businessId: string, data: CreateReviewInput) => RepositoryCreateResult<Review>
 }
 
-
 export type BusinessRepository = {
-    createOnlineBusiness: (data: CreateOnlineBusinessInput) => Promise<OnlineBusiness | Error>
-    createPhysicalBusiness: (data: CreatePhysicalBusinessInput) => Promise<PhysicalBusiness | Error>
+    createOnlineBusiness: (data: CreateOnlineBusinessInput) => RepositoryCreateResult<OnlineBusiness>
+    createPhysicalBusiness: (data: CreatePhysicalBusinessInput) => RepositoryCreateResult<PhysicalBusiness>
 
-    getBusiness: (id: string) => Promise<OnlineBusiness | PhysicalBusiness | Error>
+    getBusiness: (id: string) => RepositoryFetchResult<OnlineBusiness | PhysicalBusiness>
 }
 
 // All repositories used in our REST API. This is the interface that the business operations will use
@@ -114,10 +124,15 @@ export class Operations {
             }
 
             const result = await this.db.business.createOnlineBusiness(business)
-            if (result instanceof Error) return result
+            switch (result.type) {
+                case 'database_error':
+                    return new Error(`Database error: ${result.error.message}`)
+                case 'success':
+                    this.log('info', `Created new business ${result.value.name}`)
+                    return
+                default: assertNever(result)
+            }
 
-            this.log('info', `Created new business ${result.name}`)
-            return
         } else if (input.type === 'physical') {
             const business = input.value
             if (business.name.length > 50) {
@@ -125,9 +140,15 @@ export class Operations {
             }
 
             const result = await this.db.business.createPhysicalBusiness(business)
-            if (result instanceof Error) return result
+            switch (result.type) {
+                case 'database_error':
+                    return new Error(`Database error: ${result.error.message}`)
+                case 'success':
+                    break
+                default: assertNever(result)
+            }
 
-            this.log('info', `Created new business ${result.name}`)
+            this.log('info', `Created new business ${result.value.name}`)
             return
         }
 
@@ -137,10 +158,18 @@ export class Operations {
     // getBusiness will return a business record, or an error if the business does not exist.
     async getBusiness(businessId: string): Promise<Business | Error> {
         const result = await this.db.business.getBusiness(businessId)
-        if (result instanceof Error) return result
+        switch (result.type) {
+            case 'database_error':
+                return new Error(`Database error: ${result.error.message}`)
+            case 'record_not_found':
+                return new Error(`Business not found`)
+            case 'success':
+                break
+            default: assertNever(result)
+        }
 
-        this.log('info', `Retrieved business ${result.name}`)
-        return result
+        this.log('info', `Retrieved business ${result.value.name}`)
+        return result.value
     }
 
     // createReview will create a new review for a business, and return an error if the review
@@ -160,7 +189,13 @@ export class Operations {
         }
 
         const result = await this.db.reviews.createReview(businessId, input)
-        if (result instanceof Error) return result
+        switch (result.type) {
+            case 'database_error':
+                return new Error(`Database error: ${result.error.message}`)
+            case 'success':
+                break
+            default: assertNever(result)
+        }
 
         this.log('info', `Created new review for business ${businessId}`)
         return
