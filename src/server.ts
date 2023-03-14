@@ -113,24 +113,6 @@ function getPathParam(url: URL): string | undefined {
 export function startServer(log: core.Logger, db: core.BusinessRepository): { stop: () => Promise<void> } {
     const businessOps = new core.BusinessOperations(db, log)
 
-    // createBusinessHandler will try to create a new business.
-    // If the request body is invalid, it will return a 400 error.
-    async function createBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse) {
-        const json = await parseJson(req)
-        const parsedJson = core.createBusinessInput.safeParse(json)
-        if (!parsedJson.success) {
-            writeError(res, new Error('Invalid request body'))
-            return
-        }
-
-        const result = await businessOps.createBusiness(parsedJson.data)
-
-        if (result instanceof Error) writeError(res, result)
-        res.writeHead(201, { 'Content-Type': 'text/plain' })
-        res.end()
-        return
-    }
-
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
     async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
         const result = await businessOps.getBusiness(id)
@@ -150,11 +132,6 @@ export function startServer(log: core.Logger, db: core.BusinessRepository): { st
         const url = new URL(req.url!, `http://${req.headers.host}`)
 
         if (matchesPath(url, '/business')) {
-            if (req.method === 'POST') {
-                await createBusinessHandler(req, res)
-                return
-            }
-
             const id = getPathParam(url)
             if (req.method === 'GET' && id !== undefined) {
                 await getBusinessHandler(req, res, id)
