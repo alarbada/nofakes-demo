@@ -200,7 +200,7 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
 
             // POST /business/:id/reviews
             if (req.method === 'POST' && /\/business\/[a-zA-Z0-9]+\/reviews$/.test(url.pathname)) {
-                const [, id, ,] = url.pathname.split('/')
+                const [, , id, ,] = url.pathname.split('/')
                 await postReviewHandler(req, res, id!)
                 return
             }
