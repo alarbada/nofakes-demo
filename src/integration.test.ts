@@ -11,29 +11,43 @@ import { createInMemDb, startServer } from './server'
 const testURL = `http://localhost:${config.port}`
 
 describe('integration tests', () => {
-    let server: http.Server
-    let stopServer: () => Promise<void>
-
-    // In this test store can be null so that we can override it at will on
-    // each test if we want to
-    let store: core.Repositories | null = null
-
-    beforeEach(async () => {
-        const logger = (lvl: core.LogLevels, msg: string) => {}
-        if (store === null) {
-            store = createInMemDb()
-        }
-
-        let started = startServer(logger, store!)
-        server = started.server
-        stopServer = started.stop
-    })
-    afterEach(async () => {
-        await stopServer()
-    })
-
     test('returns 404 for non-existent business', async () => {
+        const logger = (lvl: core.LogLevels, msg: string) => {}
+        const store = createInMemDb()
+        const startedServer = startServer(logger, store)
+
         const response = await fetch(`${testURL}/business/1`)
         expect(response.status).toBe(404)
+
+        await startedServer.stop()
+    })
+
+    test('returns 200 for existing business with its corresponding details', async () => {
+        const logger = (lvl: core.LogLevels, msg: string) => {}
+        const inmemStore = createInMemDb()
+        const onlineBusinessRes = await inmemStore.business.createOnlineBusiness({
+            name: 'test',
+            email: 'test@test.com',
+            website: 'test.com'
+        })
+        if (onlineBusinessRes.type !== 'success') throw new Error('Failed to create business')
+
+        const physicalBusiness = await inmemStore.business.createPhysicalBusiness({
+            name: 'test',
+            email: 'test@test.com',
+            phone: '1234567890',
+            address: '123 test st',
+        })
+        if (physicalBusiness.type !== 'success') throw new Error('Failed to create business')
+
+        const startedServer = startServer(logger, inmemStore)
+
+        let response = await fetch(`${testURL}/business/${onlineBusinessRes.value.id}`)
+        expect(response.status).toBe(200)
+
+        response = await fetch(`${testURL}/business/${physicalBusiness.value.id}`)
+        expect(response.status).toBe(200)
+
+        await startedServer.stop()
     })
 })
