@@ -1,4 +1,5 @@
 import { describe, expect, test } from '@jest/globals'
+import http from 'http'
 
 import config from '../config.json'
 
@@ -7,12 +8,19 @@ import { createInMemDb, startServer } from './server'
 
 const testURL = `http://localhost:${config.port}`
 
-describe('server', () => {
-    const logger = (lvl: core.LogLevels, msg: string) => { }
-    const store = createInMemDb()
-    const server = startServer(logger, store)
-    afterAll(async () => {
-        await server.stop()
+describe('integration tests', () => {
+    let server: http.Server
+    let stopServer: () => Promise<void>
+    beforeEach(async () => {
+        const logger = (lvl: core.LogLevels, msg: string) => { }
+        const store = createInMemDb()
+
+        let started = startServer(logger, store)
+        server = started.server
+        stopServer = started.stop
+    })
+    afterEach(async () => {
+        await stopServer()
     })
 
     test('returns 404 for non-existent business', async () => {

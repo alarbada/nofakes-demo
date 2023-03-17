@@ -142,7 +142,12 @@ function getPathParam(url: URL): string | undefined {
     return param
 }
 
-export function startServer(log: core.Logger, db: core.Repositories): { stop: () => Promise<void> } {
+type StartedServer = {
+    server: http.Server,
+    stop: () => Promise<void>
+}
+
+export function startServer(log: core.Logger, db: core.Repositories): StartedServer {
     const coreOps = new core.Operations(db, log)
 
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
@@ -244,6 +249,6 @@ export function startServer(log: core.Logger, db: core.Repositories): { stop: ()
         })
     }
 
-    return { stop: stopServer }
+    return { server, stop: stopServer }
 }
 
