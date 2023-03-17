@@ -13,11 +13,18 @@ const testURL = `http://localhost:${config.port}`
 describe('integration tests', () => {
     let server: http.Server
     let stopServer: () => Promise<void>
-    beforeEach(async () => {
-        const logger = (lvl: core.LogLevels, msg: string) => { }
-        const store = createInMemDb()
 
-        let started = startServer(logger, store)
+    // In this test store can be null so that we can override it at will on
+    // each test if we want to
+    let store: core.Repositories | null = null
+
+    beforeEach(async () => {
+        const logger = (lvl: core.LogLevels, msg: string) => {}
+        if (store === null) {
+            store = createInMemDb()
+        }
+
+        let started = startServer(logger, store!)
         server = started.server
         stopServer = started.stop
     })
@@ -30,4 +37,3 @@ describe('integration tests', () => {
         expect(response.status).toBe(404)
     })
 })
-
