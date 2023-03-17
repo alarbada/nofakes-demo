@@ -9,7 +9,6 @@ export function createInMemDb(): core.Repositories {
     let businessIdCounter = 0
 
     const reviews: core.Review[] = []
-    let reviewsIdCounter = 0
 
     return {
         business: {
@@ -57,7 +56,6 @@ export function createInMemDb(): core.Repositories {
                 if (!business) return { type: 'database_error', error: new Error('Business not found') }
 
                 business.total_reviews += 1
-                reviewsIdCounter += 1
 
                 const newReview: core.Review = {
                     business_id: businessId,
@@ -73,10 +71,6 @@ export function createInMemDb(): core.Repositories {
     }
 }
 
-function logger(lvl: core.LogLevels, msg: string) {
-    console.log(`[${lvl}] ${msg}`)
-}
-
 function writeError(res: http.ServerResponse, err: Error) {
     res.writeHead(400, { 'Content-Type': 'text/plain' })
     res.end(err.message)
@@ -87,6 +81,7 @@ function writeNotFoundError(res: http.ServerResponse, err: Error) {
     res.end(err.message)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function writeJson(res: http.ServerResponse, json: { [key: string]: any }) {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(json))
@@ -183,7 +178,9 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
     }
 
     async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
-        const url = new URL(req.url!, `http://${req.headers.host}`)
+        if (req.url === undefined) throw new Error('no url found')
+
+        const url = new URL(req.url, `http://${req.headers.host}`)
 
         // Regex pattern matching works for now, but I completely agree that is not the best way to do it.
         // Regexes are compiled for every single request, which is expensive.
@@ -194,15 +191,19 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
             // GET /business/:id
             if (req.method === 'GET' && /\/business\/[a-zA-Z0-9]+$/.test(url.pathname)) {
                 const id = getPathParam(url)
-                await getBusinessHandler(req, res, id!)
-                return
+                if (id) {
+                    await getBusinessHandler(req, res, id)
+                    return
+                }
             }
 
             // POST /business/:id/reviews
             if (req.method === 'POST' && /\/business\/[a-zA-Z0-9]+\/reviews$/.test(url.pathname)) {
                 const [, , id, ,] = url.pathname.split('/')
-                await postReviewHandler(req, res, id!)
-                return
+                if (id) {
+                    await postReviewHandler(req, res, id)
+                    return
+                }
             }
         }
 
@@ -223,7 +224,7 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
 
     // This allows us to keep track of all incoming connections, so we can close them when the
     // server is stopped.
-    let sockets = new Set<net.Socket>()
+    const sockets = new Set<net.Socket>()
     server.on('connection', (socket) => {
         sockets.add(socket);
         socket.on('close', () => {

@@ -1,5 +1,4 @@
 import { describe, expect, test } from '@jest/globals'
-import http from 'http'
 
 import fetch from 'node-fetch'
 
@@ -11,8 +10,9 @@ import { createInMemDb, startServer } from './server'
 const testURL = `http://localhost:${config.port}`
 
 describe('integration tests', () => {
+    // eslint-disable-next-line
+    const logger = (_lvl: core.LogLevels, _msg: string) => { }
     test('returns 404 for non-existent business', async () => {
-        const logger = (lvl: core.LogLevels, msg: string) => { }
         const store = createInMemDb()
         const startedServer = startServer(logger, store)
 
@@ -23,7 +23,6 @@ describe('integration tests', () => {
     })
 
     test('returns 200 for existing business with its corresponding details', async () => {
-        const logger = (lvl: core.LogLevels, msg: string) => { }
         const inmemStore = createInMemDb()
         const onlineBusinessRes = await inmemStore.business.createOnlineBusiness({
             name: 'test',
@@ -75,7 +74,6 @@ describe('integration tests', () => {
     })
 
     test('create and retrieve reviews for a business correctly work', async () => {
-        const logger = (lvl: core.LogLevels, msg: string) => { }
         const inmemStore = createInMemDb()
         const onlineBusinessRes = await inmemStore.business.createOnlineBusiness({
             name: 'test',
@@ -108,7 +106,7 @@ describe('integration tests', () => {
         expect(response.status).toBe(200)
 
         const json = await response.json()
-        expect(json).toStrictEqual({    
+        expect(json).toStrictEqual({
             id: '1',
             name: 'test',
             website: 'test.com',
