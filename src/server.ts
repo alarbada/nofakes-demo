@@ -82,6 +82,11 @@ function writeError(res: http.ServerResponse, err: Error) {
     res.end(err.message)
 }
 
+function writeNotFoundError(res: http.ServerResponse, err: Error) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' })
+    res.end(err.message)
+}
+
 function writeJson(res: http.ServerResponse, json: any) {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(json))
@@ -147,7 +152,7 @@ export function startServer(log: core.Logger, db: core.Repositories): { stop: ()
         // TODO: We need to distinguish between database errors and business not found errors,
         // so we can return a 404 in the latter case
         if (result instanceof Error) {
-            writeError(res, result)
+            writeNotFoundError(res, result)
             return
         }
 
@@ -196,10 +201,8 @@ export function startServer(log: core.Logger, db: core.Repositories): { stop: ()
             }
         }
 
-        res.writeHead(404, { 'Content-Type': 'text/plain' })
-        res.end(`No route for ${req.method} ${req.url}`)
+        writeNotFoundError(res, new Error(`No route for ${req.method} ${req.url}`))
     }
-
 
     const server = http.createServer((req, res) => {
         mainHandler(req, res).catch(err => {
