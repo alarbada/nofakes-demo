@@ -4,7 +4,6 @@ import config from '../config.json'
 import * as core from './core'
 
 export function createInMemDb(): core.Repositories {
-
     const businesses: core.Business[] = []
     let businessIdCounter = 0
 
@@ -12,7 +11,9 @@ export function createInMemDb(): core.Repositories {
 
     return {
         business: {
-            async createOnlineBusiness(data: core.CreateOnlineBusinessInput): core.RepositoryCreateResult<core.OnlineBusiness> {
+            async createOnlineBusiness(
+                data: core.CreateOnlineBusinessInput
+            ): core.RepositoryCreateResult<core.OnlineBusiness> {
                 businessIdCounter += 1
 
                 const business: core.OnlineBusiness = {
@@ -20,14 +21,16 @@ export function createInMemDb(): core.Repositories {
                     name: data.name,
                     website: data.website,
                     email: data.email,
-                    total_reviews: 0
+                    total_reviews: 0,
                 }
                 businesses.push(business)
 
                 return { type: 'success', value: business }
             },
 
-            async createPhysicalBusiness(data: core.CreatePhysicalBusinessInput): core.RepositoryCreateResult<core.PhysicalBusiness> {
+            async createPhysicalBusiness(
+                data: core.CreatePhysicalBusinessInput
+            ): core.RepositoryCreateResult<core.PhysicalBusiness> {
                 businessIdCounter += 1
 
                 const business: core.PhysicalBusiness = {
@@ -36,24 +39,33 @@ export function createInMemDb(): core.Repositories {
                     address: data.address,
                     phone: data.phone,
                     email: data.email,
-                    total_reviews: 0
+                    total_reviews: 0,
                 }
                 businesses.push(business)
 
                 return { type: 'success', value: business }
             },
 
-            async getBusiness(id: string): core.RepositoryFetchResult<core.Business> {
-                const business = businesses.find(b => b.id === id)
+            async getBusiness(
+                id: string
+            ): core.RepositoryFetchResult<core.Business> {
+                const business = businesses.find((b) => b.id === id)
                 if (!business) return { type: 'record_not_found' }
 
                 return { type: 'success', value: business }
-            }
+            },
         },
         reviews: {
-            async createReview(businessId: string, data: core.CreateReviewInput): core.RepositoryCreateResult<core.Review> {
-                const business = businesses.find(b => b.id === businessId)
-                if (!business) return { type: 'database_error', error: new Error('Business not found') }
+            async createReview(
+                businessId: string,
+                data: core.CreateReviewInput
+            ): core.RepositoryCreateResult<core.Review> {
+                const business = businesses.find((b) => b.id === businessId)
+                if (!business)
+                    return {
+                        type: 'database_error',
+                        error: new Error('Business not found'),
+                    }
 
                 business.total_reviews += 1
 
@@ -66,7 +78,7 @@ export function createInMemDb(): core.Repositories {
                 reviews.push(newReview)
 
                 return { type: 'success', value: newReview }
-            }
+            },
         },
     }
 }
@@ -94,10 +106,10 @@ function writeText(res: http.ServerResponse, text: string) {
 
 function parseJson(req: http.IncomingMessage): Promise<unknown> {
     return new Promise((resolve, reject) => {
-        let body = '';
-        req.once('data', chunk => {
+        let body = ''
+        req.once('data', (chunk) => {
             try {
-                body += chunk.toString();
+                body += chunk.toString()
             } catch (err) {
                 // just in case
                 reject(err)
@@ -105,7 +117,7 @@ function parseJson(req: http.IncomingMessage): Promise<unknown> {
         })
         req.once('end', () => {
             try {
-                const data = JSON.parse(body);
+                const data = JSON.parse(body)
                 resolve(data)
             } catch (error) {
                 reject(error)
@@ -115,15 +127,15 @@ function parseJson(req: http.IncomingMessage): Promise<unknown> {
 }
 
 // Tells whether a certain URL matches a path, like the following:
-// url: /business 
+// url: /business
 // path: '/business' => matches
 //
 // url: /business/1234
 // path: '/business' => matches
-// 
+//
 // url: /reviews/1234/business
 // path: '/business' => does not match
-// 
+//
 function matchesPath(url: URL, path: string): boolean {
     return url.pathname.slice(0, path.length) === path
 }
@@ -138,15 +150,22 @@ function getPathParam(url: URL): string | undefined {
 }
 
 type StartedServer = {
-    server: http.Server,
+    server: http.Server
     stop: () => Promise<void>
 }
 
-export function startServer(log: core.Logger, db: core.Repositories): StartedServer {
+export function startServer(
+    log: core.Logger,
+    db: core.Repositories
+): StartedServer {
     const coreOps = new core.Operations(db, log)
 
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
-    async function getBusinessHandler(req: http.IncomingMessage, res: http.ServerResponse, businessId: string) {
+    async function getBusinessHandler(
+        req: http.IncomingMessage,
+        res: http.ServerResponse,
+        businessId: string
+    ) {
         const result = await coreOps.getBusiness(businessId)
 
         // TODO: We need to distinguish between database errors and business not found errors,
@@ -160,7 +179,11 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
         return
     }
 
-    async function postReviewHandler(req: http.IncomingMessage, res: http.ServerResponse, businessId: string) {
+    async function postReviewHandler(
+        req: http.IncomingMessage,
+        res: http.ServerResponse,
+        businessId: string
+    ) {
         const jsonData = await parseJson(req)
         const parseResult = core.createReviewInput.safeParse(jsonData)
         if (!parseResult.success) {
@@ -177,7 +200,10 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
         writeText(res, '')
     }
 
-    async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
+    async function mainHandler(
+        req: http.IncomingMessage,
+        res: http.ServerResponse
+    ) {
         if (req.url === undefined) throw new Error('no url found')
 
         const url = new URL(req.url, `http://${req.headers.host}`)
@@ -189,7 +215,10 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
 
         if (matchesPath(url, '/business')) {
             // GET /business/:id
-            if (req.method === 'GET' && /\/business\/[a-zA-Z0-9]+$/.test(url.pathname)) {
+            if (
+                req.method === 'GET' &&
+                /\/business\/[a-zA-Z0-9]+$/.test(url.pathname)
+            ) {
                 const id = getPathParam(url)
                 if (id) {
                     await getBusinessHandler(req, res, id)
@@ -198,7 +227,10 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
             }
 
             // POST /business/:id/reviews
-            if (req.method === 'POST' && /\/business\/[a-zA-Z0-9]+\/reviews$/.test(url.pathname)) {
+            if (
+                req.method === 'POST' &&
+                /\/business\/[a-zA-Z0-9]+\/reviews$/.test(url.pathname)
+            ) {
                 const [, , id, ,] = url.pathname.split('/')
                 if (id) {
                     await postReviewHandler(req, res, id)
@@ -207,11 +239,14 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
             }
         }
 
-        writeNotFoundError(res, new Error(`No route for ${req.method} ${req.url}`))
+        writeNotFoundError(
+            res,
+            new Error(`No route for ${req.method} ${req.url}`)
+        )
     }
 
     const server = http.createServer((req, res) => {
-        mainHandler(req, res).catch(err => {
+        mainHandler(req, res).catch((err) => {
             log('error', err)
             res.writeHead(500, { 'Content-Type': 'text/plain' })
             res.end('Internal server error')
@@ -226,11 +261,11 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
     // server is stopped.
     const sockets = new Set<net.Socket>()
     server.on('connection', (socket) => {
-        sockets.add(socket);
+        sockets.add(socket)
         socket.on('close', () => {
             sockets.delete(socket)
         })
-    });
+    })
 
     function stopServer(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -240,7 +275,7 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
                 socket.destroy()
             }
 
-            server.close(err => {
+            server.close((err) => {
                 if (err) {
                     reject(err)
                 } else {
@@ -252,4 +287,3 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
 
     return { server, stop: stopServer }
 }
-
