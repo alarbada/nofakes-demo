@@ -1,4 +1,5 @@
 import http from 'http'
+import * as net from 'net'
 import config from '../config.json'
 import * as core from './core'
 
@@ -212,8 +213,24 @@ export function startServer(log: core.Logger, db: core.Repositories): { stop: ()
         log('info', `Server running at http://localhost:${config.port}`)
     })
 
+    // This allows us to keep track of all incoming connections, so we can close them when the
+    // server is stopped.
+    let sockets = new Set<net.Socket>()
+    server.on('connection', (socket) => {
+        sockets.add(socket);
+        socket.on('close', () => {
+            sockets.delete(socket)
+        })
+    });
+
     function stopServer(): Promise<void> {
         return new Promise((resolve, reject) => {
+            // Destroy all sockets, so that we can gracefully close the server.
+            // Note that the stop functionality is useful for use only for our integration tests.
+            for (const socket of sockets) {
+                socket.destroy()
+            }
+
             server.close(err => {
                 if (err) {
                     reject(err)
