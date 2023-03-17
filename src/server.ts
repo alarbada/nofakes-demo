@@ -87,7 +87,7 @@ function writeNotFoundError(res: http.ServerResponse, err: Error) {
     res.end(err.message)
 }
 
-function writeJson(res: http.ServerResponse, json: any) {
+function writeJson(res: http.ServerResponse, json: { [key: string]: any }) {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(json))
 }
@@ -179,7 +179,7 @@ export function startServer(log: core.Logger, db: core.Repositories): StartedSer
             return
         }
 
-        writeJson(res, result)
+        writeText(res, '')
     }
 
     async function mainHandler(req: http.IncomingMessage, res: http.ServerResponse) {
