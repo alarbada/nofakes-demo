@@ -83,7 +83,8 @@ export type Review = {
     username: string
 }
 
-export type RepositoryCreateResult<T> = Promise<
+// represents the response after editing a record of the database layer
+export type RepositoryEditResult<T> = Promise<
     { type: 'success'; value: T } | { type: 'database_error'; error: Error }
 >
 
@@ -97,16 +98,16 @@ export type ReviewRepository = {
     createReview: (
         businessId: string,
         data: CreateReviewInput
-    ) => RepositoryCreateResult<Review>
+    ) => RepositoryEditResult<Review>
 }
 
 export type BusinessRepository = {
     createOnlineBusiness: (
         data: CreateOnlineBusinessInput
-    ) => RepositoryCreateResult<OnlineBusiness>
+    ) => RepositoryEditResult<OnlineBusiness>
     createPhysicalBusiness: (
         data: CreatePhysicalBusinessInput
-    ) => RepositoryCreateResult<PhysicalBusiness>
+    ) => RepositoryEditResult<PhysicalBusiness>
 
     getBusiness: (
         id: string

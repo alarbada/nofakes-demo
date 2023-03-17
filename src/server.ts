@@ -13,7 +13,7 @@ export function createInMemDb(): core.Repositories {
         business: {
             async createOnlineBusiness(
                 data: core.CreateOnlineBusinessInput
-            ): core.RepositoryCreateResult<core.OnlineBusiness> {
+            ): core.RepositoryEditResult<core.OnlineBusiness> {
                 businessIdCounter += 1
 
                 const business: core.OnlineBusiness = {
@@ -30,7 +30,7 @@ export function createInMemDb(): core.Repositories {
 
             async createPhysicalBusiness(
                 data: core.CreatePhysicalBusinessInput
-            ): core.RepositoryCreateResult<core.PhysicalBusiness> {
+            ): core.RepositoryEditResult<core.PhysicalBusiness> {
                 businessIdCounter += 1
 
                 const business: core.PhysicalBusiness = {
@@ -59,13 +59,14 @@ export function createInMemDb(): core.Repositories {
             async createReview(
                 businessId: string,
                 data: core.CreateReviewInput
-            ): core.RepositoryCreateResult<core.Review> {
+            ): core.RepositoryEditResult<core.Review> {
                 const business = businesses.find((b) => b.id === businessId)
-                if (!business)
+                if (!business) {
                     return {
                         type: 'database_error',
                         error: new Error('Business not found'),
                     }
+                }
 
                 business.total_reviews += 1
 
