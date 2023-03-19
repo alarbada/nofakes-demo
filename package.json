@@ -29,6 +29,7 @@
     "typescript": "~5.0.2"
   },
   "dependencies": {
+    "mongodb": "~5.1.0",
     "zod": "~3.21.4"
   }
 }
