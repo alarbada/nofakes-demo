@@ -13,10 +13,8 @@ function getEnv(name: string): string {
 }
 
 export default {
-    port: getEnv("SERVER_PORT"),
+    port: getEnv('SERVER_PORT'),
     mongo: {
-        dbName: getEnv("MONGO_DATABASE")
-    }
+        dbName: getEnv('MONGO_DATABASE'),
+    },
 }
-
-

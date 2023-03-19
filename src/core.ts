@@ -140,18 +140,14 @@ export class Operations {
             }
 
             const result = await this.db.business.createOnlineBusiness(business)
-            switch (result.type) {
-                case 'database_error':
-                    return new Error(`Database error: ${result.error.message}`)
-                case 'success':
-                    this.log(
-                        'info',
-                        `Created new business ${result.value.name}`
-                    )
-                    return
-                default:
-                    assertNever(result)
+            if (result.type === 'database_error') {
+                return new Error(`Database error: ${result.error.message}`)
             }
+            if (result.type === 'success') {
+                this.log('info', `Created new business ${result.value.name}`)
+                return
+            }
+            assertNever(result)
         } else if (input.type === 'physical') {
             const business = input.value
             if (business.name.length > 50) {
@@ -161,17 +157,16 @@ export class Operations {
             const result = await this.db.business.createPhysicalBusiness(
                 business
             )
-            switch (result.type) {
-                case 'database_error':
-                    return new Error(`Database error: ${result.error.message}`)
-                case 'success':
-                    break
-                default:
-                    assertNever(result)
+            if (result.type === 'database_error') {
+                return new Error(`Database error: ${result.error.message}`)
             }
 
-            this.log('info', `Created new business ${result.value.name}`)
-            return
+            if (result.type === 'success') {
+                this.log('info', `Created new business ${result.value.name}`)
+                return
+            }
+
+            assertNever(result)
         }
 
         assertNever(input)
@@ -180,19 +175,20 @@ export class Operations {
     // getBusiness will return a business record, or an error if the business does not exist.
     async getBusiness(businessId: string): Promise<Business | Error> {
         const result = await this.db.business.getBusiness(businessId)
-        switch (result.type) {
-            case 'database_error':
-                return new Error(`Database error: ${result.error.message}`)
-            case 'record_not_found':
-                return new Error(`Business not found`)
-            case 'success':
-                break
-            default:
-                assertNever(result)
+        if (result.type === 'database_error') {
+            return new Error(`Database error: ${result.error.message}`)
         }
 
-        this.log('info', `Retrieved business ${result.value.name}`)
-        return result.value
+        if (result.type === 'record_not_found') {
+            return new Error(`Business not found`)
+        }
+
+        if (result.type === 'success') {
+            this.log('info', `Retrieved business ${result.value.name}`)
+            return result.value
+        }
+
+        assertNever(result)
     }
 
     // createReview will create a new review for a business, and return an error if the review
@@ -215,16 +211,15 @@ export class Operations {
         }
 
         const result = await this.db.reviews.createReview(businessId, input)
-        switch (result.type) {
-            case 'database_error':
-                return new Error(`Database error: ${result.error.message}`)
-            case 'success':
-                break
-            default:
-                assertNever(result)
+        if (result.type === 'database_error') {
+            return new Error(`Database error: ${result.error.message}`)
         }
 
-        this.log('info', `Created new review for business ${businessId}`)
-        return
+        if (result.type === 'success') {
+            this.log('info', `Created new review for business ${businessId}`)
+            return
+        }
+
+        assertNever(result)
     }
 }
