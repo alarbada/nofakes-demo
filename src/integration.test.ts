@@ -59,6 +59,7 @@ describe('integration tests', () => {
                 website: 'test.com',
                 email: 'test@test.com',
                 total_reviews: 0,
+                latest_reviews: [],
             })
         }
 
@@ -77,6 +78,7 @@ describe('integration tests', () => {
                 phone: '1234567890',
                 email: 'test@test.com',
                 total_reviews: 0,
+                latest_reviews: [],
             })
         }
 
@@ -96,8 +98,18 @@ describe('integration tests', () => {
 
         const startedServer = startServer(logger, inmemStore)
 
-        // add reviews
-        for (let rating = 1; rating < 5; rating++) {
+        const createReview = (rating: number) => ({
+            business_id: onlineBusinessRes.value.id,
+            text: 'super amazing business review that will get to more than 20 characters long',
+            rating,
+            username: 'test user',
+            creation_date: new Date(),
+        })
+
+        for (let rating = 1; rating <= 5; rating++) {
+            // sleep 5 ms to allow for differnt creation dates
+            await new Promise((resolve) => setTimeout(resolve, 5))
+
             const response = await fetch(
                 `${testURL}/business/${onlineBusinessRes.value.id}/reviews`,
                 {
@@ -105,11 +117,7 @@ describe('integration tests', () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        text: 'super amazing business test test lets get to more than 20 chars',
-                        rating,
-                        username: 'test user 1',
-                    }),
+                    body: JSON.stringify(createReview(rating)),
                 }
             )
 
@@ -128,7 +136,14 @@ describe('integration tests', () => {
             name: 'test',
             website: 'test.com',
             email: 'test@test.com',
-            total_reviews: 4,
+            total_reviews: 5,
+            latest_reviews: [
+                createReview(1),
+                createReview(2),
+                createReview(3),
+                createReview(4),
+                createReview(5),
+            ],
         })
 
         await startedServer.stop()
