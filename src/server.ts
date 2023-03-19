@@ -1,7 +1,10 @@
 import http from 'http'
 import * as net from 'net'
-import config from '../config.json'
 import * as core from './core'
+
+const config = {
+    port: process.env["PORT"] ?? "3000"
+}
 
 function writeError(res: http.ServerResponse, err: Error) {
     res.writeHead(400, { 'Content-Type': 'text/plain' })
