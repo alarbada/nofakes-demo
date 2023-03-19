@@ -62,7 +62,9 @@ export type CreateBusinessInput = z.infer<typeof createBusinessInput>
 
 // All possible business records. This may or may not be converted to a discriminated union,
 // right now we just use this type to serialize all business info types to JSON.
-export type Business = OnlineBusiness | PhysicalBusiness
+export type Business = 
+    | { type: 'online', value: OnlineBusiness }
+    | { type: 'physical', value: PhysicalBusiness }
 
 export type LogLevels = 'info' | 'error' | 'warn' | 'debug'
 export type Logger = (lvl: LogLevels, msg: string) => void
@@ -107,7 +109,7 @@ export type BusinessRepository = {
 
     getBusiness: (
         id: string
-    ) => RepositoryFetchResult<OnlineBusiness | PhysicalBusiness>
+    ) => RepositoryFetchResult<Business>
 
 
     createReview: (
@@ -174,7 +176,7 @@ export class Operations {
         }
 
         if (result.type === 'success') {
-            this.log('info', `Retrieved business ${result.value.name}`)
+            this.log('info', `Retrieved business ${result.value.value.name}`)
             return result.value
         }
 

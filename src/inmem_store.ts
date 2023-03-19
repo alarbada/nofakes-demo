@@ -20,7 +20,7 @@ export function createInMemDb(): core.BusinessRepository {
                 total_reviews: 0,
                 latest_reviews: [],
             }
-            businesses.push(business)
+            businesses.push({ type: 'online', value: business })
 
             return { type: 'success', value: business }
         },
@@ -39,7 +39,7 @@ export function createInMemDb(): core.BusinessRepository {
                 total_reviews: 0,
                 latest_reviews: [],
             }
-            businesses.push(business)
+            businesses.push({ type: 'physical', value: business })
 
             return { type: 'success', value: business }
         },
@@ -47,11 +47,11 @@ export function createInMemDb(): core.BusinessRepository {
         async getBusiness(
             id: string
         ): core.RepositoryFetchResult<core.Business> {
-            const inMemBusiness = businesses.find((b) => b.id === id)
+            const inMemBusiness = businesses.find((b) => b.value.id === id)
             if (!inMemBusiness) return { type: 'record_not_found' }
 
             // sort inMemBusiness.latest_reviews by date
-            let sorted = inMemBusiness.latest_reviews.sort((prev, next) => {
+            let sorted = inMemBusiness.value.latest_reviews.sort((prev, next) => {
                 const prevTime = prev.creation_date.getTime()
                 const nextTime = next.creation_date.getTime()
                 return nextTime - prevTime
@@ -71,7 +71,7 @@ export function createInMemDb(): core.BusinessRepository {
             businessId: string,
             data: core.CreateReviewInput
         ): core.RepositoryEditResult<core.Review> {
-            const business = businesses.find((b) => b.id === businessId)
+            const business = businesses.find((b) => b.value.id === businessId)
             if (!business) {
                 return {
                     type: 'database_error',
@@ -88,8 +88,8 @@ export function createInMemDb(): core.BusinessRepository {
             }
             reviews.push(newReview)
 
-            business.total_reviews += 1
-            business.latest_reviews.push(newReview)
+            business.value.total_reviews += 1
+            business.value.latest_reviews.push(newReview)
 
             return { type: 'success', value: newReview }
         },
