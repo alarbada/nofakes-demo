@@ -1,10 +1,8 @@
 import http from 'http'
 import * as net from 'net'
 import * as core from './core'
-
-const config = {
-    port: process.env["PORT"] ?? "3000"
-}
+import * as mongo from 'mongodb'
+import config from './config'
 
 function writeError(res: http.ServerResponse, err: Error) {
     res.writeHead(400, { 'Content-Type': 'text/plain' })
