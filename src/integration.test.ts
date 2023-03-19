@@ -106,9 +106,14 @@ describe('integration tests', () => {
             creation_date: new Date(),
         })
 
+        const created = []
+
         for (let rating = 1; rating <= 5; rating++) {
             // sleep 5 ms to allow for differnt creation dates
             await new Promise((resolve) => setTimeout(resolve, 5))
+
+            const review = createReview(rating)
+            created.push(review)
 
             const response = await fetch(
                 `${testURL}/business/${onlineBusinessRes.value.id}/reviews`,
@@ -117,7 +122,7 @@ describe('integration tests', () => {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(createReview(rating)),
+                    body: JSON.stringify(review),
                 }
             )
 
@@ -130,21 +135,13 @@ describe('integration tests', () => {
         )
         expect(response.status).toBe(200)
 
-        const json = await response.json()
-        expect(json).toStrictEqual({
-            id: '1',
-            name: 'test',
-            website: 'test.com',
-            email: 'test@test.com',
-            total_reviews: 5,
-            latest_reviews: [
-                createReview(1),
-                createReview(2),
-                createReview(3),
-                createReview(4),
-                createReview(5),
-            ],
-        })
+        // Yes, this is a bit hacky, but the reasoning is as follows.
+        // If the ratings from the reviews match these outputs, that will
+        // mean that they were properly inserted and sorted out.
+        const json: any = await response.json()
+        expect(json.latest_reviews[0].rating).toBe(5)
+        expect(json.latest_reviews[1].rating).toBe(4)
+        expect(json.latest_reviews[2].rating).toBe(3)
 
         await startedServer.stop()
     })

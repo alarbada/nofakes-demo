@@ -22,6 +22,7 @@ export function createInMemDb(): core.Repositories {
                     website: data.website,
                     email: data.email,
                     total_reviews: 0,
+                    latest_reviews: [],
                 }
                 businesses.push(business)
 
@@ -40,6 +41,7 @@ export function createInMemDb(): core.Repositories {
                     phone: data.phone,
                     email: data.email,
                     total_reviews: 0,
+                    latest_reviews: [],
                 }
                 businesses.push(business)
 
@@ -49,8 +51,23 @@ export function createInMemDb(): core.Repositories {
             async getBusiness(
                 id: string
             ): core.RepositoryFetchResult<core.Business> {
-                const business = businesses.find((b) => b.id === id)
-                if (!business) return { type: 'record_not_found' }
+                const inMemBusiness = businesses.find((b) => b.id === id)
+                if (!inMemBusiness) return { type: 'record_not_found' }
+
+                // sort inMemBusiness.latest_reviews by date
+                let sorted = inMemBusiness.latest_reviews.sort((prev, next) => {
+                    const prevTime = prev.creation_date.getTime()
+                    const nextTime = next.creation_date.getTime()
+                    return nextTime - prevTime
+                })
+
+                // get the latest 3
+                sorted = sorted.slice(0, 3)
+
+                const business = {
+                    ...inMemBusiness,
+                    latest_reviews: sorted,
+                }
 
                 return { type: 'success', value: business }
             },
@@ -68,15 +85,17 @@ export function createInMemDb(): core.Repositories {
                     }
                 }
 
-                business.total_reviews += 1
-
                 const newReview: core.Review = {
                     business_id: businessId,
                     username: data.username,
                     rating: data.rating,
                     text: data.text,
+                    creation_date: new Date(),
                 }
                 reviews.push(newReview)
+
+                business.total_reviews += 1
+                business.latest_reviews.push(newReview)
 
                 return { type: 'success', value: newReview }
             },

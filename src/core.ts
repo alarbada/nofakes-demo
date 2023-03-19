@@ -23,6 +23,7 @@ export type OnlineBusiness = {
     website: string
     email: string
     total_reviews: number
+    latest_reviews: Review[]
 }
 
 // The necessary input to create a new physical business record
@@ -45,6 +46,7 @@ export type PhysicalBusiness = {
     phone: string
     email: string
     total_reviews: number
+    latest_reviews: Review[]
 }
 
 export const createBusinessInput = z.discriminatedUnion('type', [
@@ -81,6 +83,7 @@ export type Review = {
     text: string
     rating: number
     username: string
+    creation_date: Date
 }
 
 // represents the response after editing a record of the database layer
