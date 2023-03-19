@@ -5,7 +5,8 @@ import fetch from 'node-fetch'
 import config from '../config.json'
 
 import * as core from '../src/core'
-import { createInMemDb, startServer } from './server'
+import { startServer } from './server'
+import { createInMemDb } from './inmem_store'
 
 const testURL = `http://localhost:${config.port}`
 
