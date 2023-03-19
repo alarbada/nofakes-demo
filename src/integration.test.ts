@@ -139,6 +139,8 @@ describe('integration tests', () => {
         // Yes, this is a bit hacky, but the reasoning is as follows.
         // If the ratings from the reviews match these outputs, that will
         // mean that they were properly inserted and sorted out.
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const json: any = await response.json()
         expect(json.latest_reviews[0].rating).toBe(5)
         expect(json.latest_reviews[1].rating).toBe(4)
@@ -147,3 +149,5 @@ describe('integration tests', () => {
         await startedServer.stop()
     })
 })
+
+
