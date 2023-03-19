@@ -97,13 +97,6 @@ export type RepositoryFetchResult<T> = Promise<
     | { type: 'database_error'; error: Error }
 >
 
-export type ReviewRepository = {
-    createReview: (
-        businessId: string,
-        data: CreateReviewInput
-    ) => RepositoryEditResult<Review>
-}
-
 export type BusinessRepository = {
     createOnlineBusiness: (
         data: CreateOnlineBusinessInput
@@ -115,20 +108,17 @@ export type BusinessRepository = {
     getBusiness: (
         id: string
     ) => RepositoryFetchResult<OnlineBusiness | PhysicalBusiness>
-}
 
-// All repositories used in our REST API. This is the interface that the business operations will use
-// to interact with an external database. Note that the repositories will not know anything
-// about the database implementation, so we can swap out database implementations without
-// having to change much core logic.
-export type Repositories = {
-    business: BusinessRepository
-    reviews: ReviewRepository
+
+    createReview: (
+        businessId: string,
+        data: CreateReviewInput
+    ) => RepositoryEditResult<Review>
 }
 
 // Operations will hold all core operations that can be performed on our REST API
 export class Operations {
-    constructor(public db: Repositories, public log: Logger) {}
+    constructor(public db: BusinessRepository, public log: Logger) {}
 
     // createBusiness will create a new business record, and return an error if the business
     // has an invalid name.
@@ -139,7 +129,7 @@ export class Operations {
                 return new Error(`Business name is too long`)
             }
 
-            const result = await this.db.business.createOnlineBusiness(business)
+            const result = await this.db.createOnlineBusiness(business)
             if (result.type === 'database_error') {
                 return new Error(`Database error: ${result.error.message}`)
             }
@@ -154,7 +144,7 @@ export class Operations {
                 return new Error(`Business name is too long`)
             }
 
-            const result = await this.db.business.createPhysicalBusiness(
+            const result = await this.db.createPhysicalBusiness(
                 business
             )
             if (result.type === 'database_error') {
@@ -174,7 +164,7 @@ export class Operations {
 
     // getBusiness will return a business record, or an error if the business does not exist.
     async getBusiness(businessId: string): Promise<Business | Error> {
-        const result = await this.db.business.getBusiness(businessId)
+        const result = await this.db.getBusiness(businessId)
         if (result.type === 'database_error') {
             return new Error(`Database error: ${result.error.message}`)
         }
@@ -210,7 +200,7 @@ export class Operations {
             return new Error('Rating must be an integer')
         }
 
-        const result = await this.db.reviews.createReview(businessId, input)
+        const result = await this.db.createReview(businessId, input)
         if (result.type === 'database_error') {
             return new Error(`Database error: ${result.error.message}`)
         }

@@ -77,7 +77,7 @@ type StartedServer = {
 
 export function startServer(
     log: core.Logger,
-    db: core.Repositories
+    db: core.BusinessRepository
 ): StartedServer {
     const coreOps = new core.Operations(db, log)
 

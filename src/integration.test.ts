@@ -26,7 +26,7 @@ describe('integration tests', () => {
     test('returns 200 for existing business with its corresponding details', async () => {
         const inmemStore = createInMemDb()
         const onlineBusinessRes =
-            await inmemStore.business.createOnlineBusiness({
+            await inmemStore.createOnlineBusiness({
                 name: 'test',
                 email: 'test@test.com',
                 website: 'test.com',
@@ -35,7 +35,7 @@ describe('integration tests', () => {
             throw new Error('Failed to create business')
 
         const physicalBusiness =
-            await inmemStore.business.createPhysicalBusiness({
+            await inmemStore.createPhysicalBusiness({
                 name: 'test',
                 email: 'test@test.com',
                 phone: '1234567890',
@@ -89,7 +89,7 @@ describe('integration tests', () => {
     test('create and retrieve reviews for a business correctly work', async () => {
         const inmemStore = createInMemDb()
         const onlineBusinessRes =
-            await inmemStore.business.createOnlineBusiness({
+            await inmemStore.createOnlineBusiness({
                 name: 'test',
                 email: 'test@test.com',
                 website: 'test.com',
