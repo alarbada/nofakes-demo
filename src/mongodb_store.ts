@@ -4,7 +4,8 @@ import * as core from './core'
 import config from './config'
 import { assertNever } from './utils'
 
-const url = `mongodb+srv://${config.mongo.user}:${config.mongo.password}@localhost/?retryWrites=true&w=majority`
+const url = `mongodb://${config.mongo.user}:${config.mongo.password}@localhost:27017/?retryWrites=true&w=majority`
+console.log(url)
 
 function handleMongoErr(err: unknown) {
     if (err instanceof Error) {
@@ -60,7 +61,7 @@ const MongoBusinessCollection = {
     },
 }
 
-export async function mongoDbStore(): Promise<core.BusinessRepository> {
+export async function createMongoDbStore(): Promise<core.BusinessRepository> {
     const client = new mongo.MongoClient(url)
 
     const conn = await client.connect()
