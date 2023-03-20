@@ -16,5 +16,7 @@ export default {
     port: getEnv('SERVER_PORT'),
     mongo: {
         dbName: getEnv('MONGO_DATABASE'),
+        user: getEnv('MONGO_USER'),
+        password: getEnv('MONGO_PASSWORD'),
     },
 }
