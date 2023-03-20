@@ -13,6 +13,12 @@ const testURL = `http://localhost:${config.port}`
 describe('integration tests', () => {
     // eslint-disable-next-line
     const logger = (_lvl: core.LogLevels, _msg: string) => {}
+
+    let stopServer = async () => {}
+    afterEach(async () => {
+        await stopServer()
+    })
+
     test('returns 404 for non-existent business', async () => {
         const store = createInMemDb()
         const startedServer = startServer(logger, store)
@@ -43,6 +49,7 @@ describe('integration tests', () => {
             throw new Error('Failed to create business')
 
         const startedServer = startServer(logger, inmemStore)
+        stopServer = startedServer.stop
 
         {
             // online business
@@ -80,8 +87,6 @@ describe('integration tests', () => {
                 latest_reviews: [],
             })
         }
-
-        await startedServer.stop()
     })
 
     test('create and retrieve reviews for a business correctly work', async () => {
@@ -95,6 +100,7 @@ describe('integration tests', () => {
             throw new Error('Failed to create business')
 
         const startedServer = startServer(logger, inmemStore)
+        stopServer = startedServer.stop
 
         const createReview = (rating: number) => ({
             business_id: onlineBusinessRes.value.id,
@@ -142,7 +148,5 @@ describe('integration tests', () => {
         expect(json.latest_reviews[0].rating).toBe(5)
         expect(json.latest_reviews[1].rating).toBe(4)
         expect(json.latest_reviews[2].rating).toBe(3)
-
-        await startedServer.stop()
     })
 })

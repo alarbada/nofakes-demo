@@ -50,6 +50,8 @@ export type RepositoryFetchResult<T> = Promise<
     | { type: 'database_error'; error: Error }
 >
 
+// These are the inputs that the database layer needs in order to save data
+
 type CreateOnlineBusinessData = {
     name: string
     website: string
