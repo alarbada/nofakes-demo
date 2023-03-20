@@ -93,7 +93,10 @@ export function startServer(
     ) {
         const result = await db.getBusiness(businessId)
         if (result.type === 'record_not_found') {
-            writeNotFoundError(res, new Error(`Business with id ${businessId} not found`))
+            writeNotFoundError(
+                res,
+                new Error(`Business with id ${businessId} not found`)
+            )
             return
         }
 
@@ -102,7 +105,7 @@ export function startServer(
             writeError(res, new Error('Database error happened'))
             return
         }
-        
+
         if (result.type === 'success') {
             const business = result.value
             writeJson(res, business)

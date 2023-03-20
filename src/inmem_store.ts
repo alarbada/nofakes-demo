@@ -51,11 +51,13 @@ export function createInMemDb(): core.BusinessRepository {
             if (!inMemBusiness) return { type: 'record_not_found' }
 
             // sort inMemBusiness.latest_reviews by date
-            let sorted = inMemBusiness.value.latest_reviews.sort((prev, next) => {
-                const prevTime = prev.creation_date.getTime()
-                const nextTime = next.creation_date.getTime()
-                return nextTime - prevTime
-            })
+            let sorted = inMemBusiness.value.latest_reviews.sort(
+                (prev, next) => {
+                    const prevTime = prev.creation_date.getTime()
+                    const nextTime = next.creation_date.getTime()
+                    return nextTime - prevTime
+                }
+            )
 
             // get the latest 3
             sorted = sorted.slice(0, 3)

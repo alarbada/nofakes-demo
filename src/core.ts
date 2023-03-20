@@ -62,9 +62,9 @@ export type CreateBusinessInput = z.infer<typeof createBusinessInput>
 
 // All possible business records. This may or may not be converted to a discriminated union,
 // right now we just use this type to serialize all business info types to JSON.
-export type Business = 
-    | { type: 'online', value: OnlineBusiness }
-    | { type: 'physical', value: PhysicalBusiness }
+export type Business =
+    | { type: 'online'; value: OnlineBusiness }
+    | { type: 'physical'; value: PhysicalBusiness }
 
 export type LogLevels = 'info' | 'error' | 'warn' | 'debug'
 export type Logger = (lvl: LogLevels, msg: string) => void
@@ -107,10 +107,7 @@ export type BusinessRepository = {
         data: CreatePhysicalBusinessInput
     ) => RepositoryEditResult<PhysicalBusiness>
 
-    getBusiness: (
-        id: string
-    ) => RepositoryFetchResult<Business>
-
+    getBusiness: (id: string) => RepositoryFetchResult<Business>
 
     createReview: (
         businessId: string,
@@ -146,9 +143,7 @@ export class Operations {
                 return new Error(`Business name is too long`)
             }
 
-            const result = await this.db.createPhysicalBusiness(
-                business
-            )
+            const result = await this.db.createPhysicalBusiness(business)
             if (result.type === 'database_error') {
                 return new Error(`Database error: ${result.error.message}`)
             }
