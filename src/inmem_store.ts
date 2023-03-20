@@ -8,12 +8,12 @@ export function createInMemDb(): core.BusinessRepository {
 
     return {
         async createOnlineBusiness(
-            data: core.CreateOnlineBusinessInput
+            data: core.CreateOnlineBusinessData
         ): core.RepositoryEditResult<core.OnlineBusiness> {
             businessIdCounter += 1
 
             const business: core.OnlineBusiness = {
-                id: businessIdCounter.toString(),
+                id: businessIdCounter,
                 name: data.name,
                 website: data.website,
                 email: data.email,
@@ -26,12 +26,12 @@ export function createInMemDb(): core.BusinessRepository {
         },
 
         async createPhysicalBusiness(
-            data: core.CreatePhysicalBusinessInput
+            data: core.CreatePhysicalBusinessData
         ): core.RepositoryEditResult<core.PhysicalBusiness> {
             businessIdCounter += 1
 
             const business: core.PhysicalBusiness = {
-                id: businessIdCounter.toString(),
+                id: businessIdCounter,
                 name: data.name,
                 address: data.address,
                 phone: data.phone,
@@ -45,7 +45,7 @@ export function createInMemDb(): core.BusinessRepository {
         },
 
         async getBusiness(
-            id: string
+            id: number
         ): core.RepositoryFetchResult<core.Business> {
             const inMemBusiness = businesses.find((b) => b.value.id === id)
             if (!inMemBusiness) return { type: 'record_not_found' }
@@ -70,8 +70,8 @@ export function createInMemDb(): core.BusinessRepository {
             return { type: 'success', value: business }
         },
         async createReview(
-            businessId: string,
-            data: core.CreateReviewInput
+            businessId: number,
+            data: core.CreateReviewData
         ): core.RepositoryEditResult<core.Review> {
             const business = businesses.find((b) => b.value.id === businessId)
             if (!business) {

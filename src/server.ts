@@ -10,6 +10,15 @@ function assertNever(x: never): never {
     throw new Error('Unexpected object: ' + x)
 }
 
+// The default parseInt returns also NaN, which as the name tells, is not a number.
+// But for some reason for typescirpt it IS a number. Let's better enforce this variant.
+function safeParseInt(unparsed: string): number | undefined {
+    const parsed = parseInt(unparsed)
+    if (isNaN(parsed)) return undefined
+
+    return parsed
+}
+
 function writeError(res: http.ServerResponse, err: Error) {
     res.writeHead(400, { 'Content-Type': 'text/plain' })
     res.end(err.message)
@@ -148,7 +157,13 @@ export function startServer(
         res: http.ServerResponse,
         businessId: string
     ) {
-        const result = await db.getBusiness(businessId)
+        const parsedBusinessId = safeParseInt(businessId)
+        if (parsedBusinessId === undefined) {
+            writeError(res, new Error('Invalid business id provided'))
+            return 
+        }
+
+        const result = await db.getBusiness(parsedBusinessId)
         if (result.type === 'record_not_found') {
             writeNotFoundError(
                 res,
@@ -189,6 +204,12 @@ export function startServer(
         res: http.ServerResponse,
         businessId: string
     ): Promise<void> {
+        const parsedBusinessId = safeParseInt(businessId)
+        if (parsedBusinessId === undefined) {
+            writeError(res, new Error('Invalid business id provided'))
+            return
+        }
+
         const jsonData = await parseJson(req)
         const parseResult = postReviewJson.safeParse(jsonData)
         if (!parseResult.success) {
@@ -215,7 +236,7 @@ export function startServer(
             return
         }
 
-        const reviewResult = await db.createReview(businessId, input)
+        const reviewResult = await db.createReview(parsedBusinessId, input)
         if (reviewResult.type === 'database_error') {
             writeError(
                 res,

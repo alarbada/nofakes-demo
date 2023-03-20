@@ -1,6 +1,6 @@
 // All data that represents an online business record
 export type OnlineBusiness = {
-    id: string
+    id: number
     name: string
     website: string
     email: string
@@ -10,7 +10,7 @@ export type OnlineBusiness = {
 
 // All data that represents a physical business record
 export type PhysicalBusiness = {
-    id: string
+    id: number
     name: string
     address: string
     phone: string
@@ -31,7 +31,7 @@ export type Logger = (lvl: LogLevels, msg: string) => void
 export type Review = {
     // "business_id" is not explicitly defined in the requirements,
     // but we need it in order to get reviews of a business
-    business_id: string
+    business_id: number
 
     text: string
     rating: number
@@ -52,20 +52,20 @@ export type RepositoryFetchResult<T> = Promise<
 
 // These are the inputs that the database layer needs in order to save data
 
-type CreateOnlineBusinessData = {
+export type CreateOnlineBusinessData = {
     name: string
     website: string
     email: string
 }
 
-type CreatePhysicalBusinessData = {
+export type CreatePhysicalBusinessData = {
     name: string
     address: string
     phone: string
     email: string
 }
 
-type CreateReviewData = {
+export type CreateReviewData = {
     text: string,
     rating: number,
     username: string,
@@ -79,10 +79,10 @@ export type BusinessRepository = {
         data: CreatePhysicalBusinessData
     ) => RepositoryEditResult<PhysicalBusiness>
 
-    getBusiness: (id: string) => RepositoryFetchResult<Business>
+    getBusiness: (id: number) => RepositoryFetchResult<Business>
 
     createReview: (
-        businessId: string,
+        businessId: number,
         data: CreateReviewData
     ) => RepositoryEditResult<Review>
 }
