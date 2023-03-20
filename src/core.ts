@@ -164,25 +164,6 @@ export class Operations {
         assertNever(input)
     }
 
-    // getBusiness will return a business record, or an error if the business does not exist.
-    async getBusiness(businessId: string): Promise<Business | Error> {
-        const result = await this.db.getBusiness(businessId)
-        if (result.type === 'database_error') {
-            return new Error(`Database error: ${result.error.message}`)
-        }
-
-        if (result.type === 'record_not_found') {
-            return new Error(`Business not found`)
-        }
-
-        if (result.type === 'success') {
-            this.log('info', `Retrieved business ${result.value.value.name}`)
-            return result.value
-        }
-
-        assertNever(result)
-    }
-
     // createReview will create a new review for a business, and return an error if the review
     // is invalid.
     async createReview(

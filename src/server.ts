@@ -4,6 +4,11 @@ import * as core from './core'
 import * as mongo from 'mongodb'
 import config from './config'
 
+// This little helper function will help us with exhaustiveness type checking
+function assertNever(x: never): never {
+    throw new Error('Unexpected object: ' + x)
+}
+
 function writeError(res: http.ServerResponse, err: Error) {
     res.writeHead(400, { 'Content-Type': 'text/plain' })
     res.end(err.message)
@@ -71,7 +76,6 @@ function getPathParam(url: URL): string | undefined {
 }
 
 type StartedServer = {
-    server: http.Server
     stop: () => Promise<void>
 }
 
@@ -87,17 +91,25 @@ export function startServer(
         res: http.ServerResponse,
         businessId: string
     ) {
-        const result = await coreOps.getBusiness(businessId)
-
-        // TODO: We need to distinguish between database errors and business not found errors,
-        // so we can return a 404 in the latter case
-        if (result instanceof Error) {
-            writeNotFoundError(res, result)
+        const result = await db.getBusiness(businessId)
+        if (result.type === 'record_not_found') {
+            writeNotFoundError(res, new Error(`Business with id ${businessId} not found`))
             return
         }
 
-        writeJson(res, result)
-        return
+        if (result.type === 'database_error') {
+            log('error', result.error.message)
+            writeError(res, new Error('Database error happened'))
+            return
+        }
+        
+        if (result.type === 'success') {
+            const business = result.value
+            writeJson(res, business)
+            return
+        }
+
+        assertNever(result)
     }
 
     async function postReviewHandler(
@@ -206,5 +218,5 @@ export function startServer(
         })
     }
 
-    return { server, stop: stopServer }
+    return { stop: stopServer }
 }
