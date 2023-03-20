@@ -182,7 +182,7 @@ export function startServer(
         req: http.IncomingMessage,
         res: http.ServerResponse,
         businessId: string
-    ) {
+    ): Promise<void> {
         const jsonData = await parseJson(req)
         const parseResult = postReviewJson.safeParse(jsonData)
         if (!parseResult.success) {
@@ -193,25 +193,35 @@ export function startServer(
         const input = parseResult.data
 
         if (input.text.length < 20) {
-            return new Error('Review text is too short')
+            writeError(res, new Error('Review text is too short'))
+            return
         } else if (input.text.length > 500) {
-            return new Error('Review text is too long')
+            writeError(res, new Error('Review text is too long'))
+            return
         }
 
         // Rating. Between 1 and 5. Without decimals.
         if (input.rating < 1 || input.rating > 5) {
-            return new Error('Rating is out of range')
+            writeError(res, new Error('Rating is out of range'))
+            return
         } else if (input.rating % 1 !== 0) {
-            return new Error('Rating must be an integer')
+            writeError(res, new Error('Rating must be an integer'))
+            return
         }
 
         const reviewResult = await db.createReview(businessId, input)
         if (reviewResult.type === 'database_error') {
-            return new Error(`Database error: ${reviewResult.error.message}`)
+            writeError(
+                res,
+                new Error(`Database error: ${reviewResult.error.message}`)
+            )
+            return
         }
 
         if (reviewResult.type === 'success') {
             log('info', `Created new review for business ${businessId}`)
+            res.writeHead(201)
+            res.end()
             return
         }
 
@@ -221,7 +231,7 @@ export function startServer(
     async function mainHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse
-    ) {
+    ): Promise<void> {
         if (req.url === undefined) throw new Error('no url found')
 
         const url = new URL(req.url, `http://${req.headers.host}`)
