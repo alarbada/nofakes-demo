@@ -2,16 +2,24 @@ import { describe, expect, test } from '@jest/globals'
 
 import fetch from 'node-fetch'
 
-import config from '../config.json'
+import config from './config'
 
 import * as core from '../src/core'
-import { createInMemDb, startServer } from './server'
+import { startServer } from './server'
+import { createInMemDb } from './inmem_store'
+import { createMongoDbStore } from './mongodb_store'
 
 const testURL = `http://localhost:${config.port}`
 
-describe('integration tests', () => {
+describe('inmem store tests', () => {
     // eslint-disable-next-line
     const logger = (_lvl: core.LogLevels, _msg: string) => {}
+
+    let stopServer = async () => {}
+    afterEach(async () => {
+        await stopServer()
+    })
+
     test('returns 404 for non-existent business', async () => {
         const store = createInMemDb()
         const startedServer = startServer(logger, store)
@@ -24,26 +32,25 @@ describe('integration tests', () => {
 
     test('returns 200 for existing business with its corresponding details', async () => {
         const inmemStore = createInMemDb()
-        const onlineBusinessRes =
-            await inmemStore.business.createOnlineBusiness({
-                name: 'test',
-                email: 'test@test.com',
-                website: 'test.com',
-            })
+        const onlineBusinessRes = await inmemStore.createOnlineBusiness({
+            name: 'test',
+            email: 'test@test.com',
+            website: 'test.com',
+        })
         if (onlineBusinessRes.type !== 'success')
             throw new Error('Failed to create business')
 
-        const physicalBusiness =
-            await inmemStore.business.createPhysicalBusiness({
-                name: 'test',
-                email: 'test@test.com',
-                phone: '1234567890',
-                address: '123 test st',
-            })
+        const physicalBusiness = await inmemStore.createPhysicalBusiness({
+            name: 'test',
+            email: 'test@test.com',
+            phone: '1234567890',
+            address: '123 test st',
+        })
         if (physicalBusiness.type !== 'success')
             throw new Error('Failed to create business')
 
         const startedServer = startServer(logger, inmemStore)
+        stopServer = startedServer.stop
 
         {
             // online business
@@ -54,6 +61,7 @@ describe('integration tests', () => {
 
             const json = await response.json()
             expect(json).toStrictEqual({
+                type: 'online',
                 id: '1',
                 name: 'test',
                 website: 'test.com',
@@ -72,6 +80,7 @@ describe('integration tests', () => {
 
             const json = await response.json()
             expect(json).toStrictEqual({
+                type: 'physical',
                 id: '2',
                 name: 'test',
                 address: '123 test st',
@@ -81,22 +90,20 @@ describe('integration tests', () => {
                 latest_reviews: [],
             })
         }
-
-        await startedServer.stop()
     })
 
     test('create and retrieve reviews for a business correctly work', async () => {
         const inmemStore = createInMemDb()
-        const onlineBusinessRes =
-            await inmemStore.business.createOnlineBusiness({
-                name: 'test',
-                email: 'test@test.com',
-                website: 'test.com',
-            })
+        const onlineBusinessRes = await inmemStore.createOnlineBusiness({
+            name: 'test',
+            email: 'test@test.com',
+            website: 'test.com',
+        })
         if (onlineBusinessRes.type !== 'success')
             throw new Error('Failed to create business')
 
         const startedServer = startServer(logger, inmemStore)
+        stopServer = startedServer.stop
 
         const createReview = (rating: number) => ({
             business_id: onlineBusinessRes.value.id,
@@ -126,7 +133,7 @@ describe('integration tests', () => {
                 }
             )
 
-            expect(response.status).toBe(200)
+            expect(response.status).toBe(201)
         }
 
         // get reviews
@@ -138,11 +145,11 @@ describe('integration tests', () => {
         // Yes, this is a bit hacky, but the reasoning is as follows.
         // If the ratings from the reviews match these outputs, that will
         // mean that they were properly inserted and sorted out.
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const json: any = await response.json()
         expect(json.latest_reviews[0].rating).toBe(5)
         expect(json.latest_reviews[1].rating).toBe(4)
         expect(json.latest_reviews[2].rating).toBe(3)
-
-        await startedServer.stop()
     })
 })

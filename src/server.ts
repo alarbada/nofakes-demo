@@ -1,106 +1,19 @@
 import http from 'http'
 import * as net from 'net'
-import config from '../config.json'
+import { z } from 'zod'
+
 import * as core from './core'
+import config from './config'
+import { assertNever } from './utils'
+import { createMongoDbStore } from './mongodb_store'
 
-export function createInMemDb(): core.Repositories {
-    const businesses: core.Business[] = []
-    let businessIdCounter = 0
+// The default parseInt returns also NaN, which as the name tells, is not a number.
+// But for some reason for typescirpt it IS a number. Let's better enforce this variant.
+function safeParseInt(unparsed: string): number | undefined {
+    const parsed = parseInt(unparsed)
+    if (isNaN(parsed)) return undefined
 
-    const reviews: core.Review[] = []
-
-    return {
-        business: {
-            async createOnlineBusiness(
-                data: core.CreateOnlineBusinessInput
-            ): core.RepositoryEditResult<core.OnlineBusiness> {
-                businessIdCounter += 1
-
-                const business: core.OnlineBusiness = {
-                    id: businessIdCounter.toString(),
-                    name: data.name,
-                    website: data.website,
-                    email: data.email,
-                    total_reviews: 0,
-                    latest_reviews: [],
-                }
-                businesses.push(business)
-
-                return { type: 'success', value: business }
-            },
-
-            async createPhysicalBusiness(
-                data: core.CreatePhysicalBusinessInput
-            ): core.RepositoryEditResult<core.PhysicalBusiness> {
-                businessIdCounter += 1
-
-                const business: core.PhysicalBusiness = {
-                    id: businessIdCounter.toString(),
-                    name: data.name,
-                    address: data.address,
-                    phone: data.phone,
-                    email: data.email,
-                    total_reviews: 0,
-                    latest_reviews: [],
-                }
-                businesses.push(business)
-
-                return { type: 'success', value: business }
-            },
-
-            async getBusiness(
-                id: string
-            ): core.RepositoryFetchResult<core.Business> {
-                const inMemBusiness = businesses.find((b) => b.id === id)
-                if (!inMemBusiness) return { type: 'record_not_found' }
-
-                // sort inMemBusiness.latest_reviews by date
-                let sorted = inMemBusiness.latest_reviews.sort((prev, next) => {
-                    const prevTime = prev.creation_date.getTime()
-                    const nextTime = next.creation_date.getTime()
-                    return nextTime - prevTime
-                })
-
-                // get the latest 3
-                sorted = sorted.slice(0, 3)
-
-                const business = {
-                    ...inMemBusiness,
-                    latest_reviews: sorted,
-                }
-
-                return { type: 'success', value: business }
-            },
-        },
-        reviews: {
-            async createReview(
-                businessId: string,
-                data: core.CreateReviewInput
-            ): core.RepositoryEditResult<core.Review> {
-                const business = businesses.find((b) => b.id === businessId)
-                if (!business) {
-                    return {
-                        type: 'database_error',
-                        error: new Error('Business not found'),
-                    }
-                }
-
-                const newReview: core.Review = {
-                    business_id: businessId,
-                    username: data.username,
-                    rating: data.rating,
-                    text: data.text,
-                    creation_date: new Date(),
-                }
-                reviews.push(newReview)
-
-                business.total_reviews += 1
-                business.latest_reviews.push(newReview)
-
-                return { type: 'success', value: newReview }
-            },
-        },
-    }
+    return parsed
 }
 
 function writeError(res: http.ServerResponse, err: Error) {
@@ -117,11 +30,6 @@ function writeNotFoundError(res: http.ServerResponse, err: Error) {
 function writeJson(res: http.ServerResponse, json: { [key: string]: any }) {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(json))
-}
-
-function writeText(res: http.ServerResponse, text: string) {
-    res.writeHead(200, { 'Content-Type': 'text/plain' })
-    res.end(text)
 }
 
 function parseJson(req: http.IncomingMessage): Promise<unknown> {
@@ -170,60 +78,184 @@ function getPathParam(url: URL): string | undefined {
 }
 
 type StartedServer = {
-    server: http.Server
     stop: () => Promise<void>
+}
+
+// CreateBusinessInput represents the necessary data to create either a physical
+// or an online business
+export type CreateBusinessInput =
+    | {
+          type: 'online'
+          value: {
+              name: string
+              website: string
+              email: string
+          }
+      }
+    | {
+          type: 'physical'
+          value: {
+              name: string
+              address: string
+              phone: string
+              email: string
+          }
+      }
+
+export async function createBusiness(
+    input: CreateBusinessInput,
+    db: core.BusinessRepository,
+    log: core.Logger
+): Promise<void | Error> {
+    if (input.type === 'online') {
+        const business = input.value
+        if (business.name.length > 75) {
+            return new Error(`Business name is too long`)
+        }
+
+        const result = await db.createOnlineBusiness(business)
+        if (result.type === 'database_error') {
+            return new Error(`Database error: ${result.error.message}`)
+        }
+        if (result.type === 'success') {
+            log('info', `Created new business ${result.value.name}`)
+            return
+        }
+        assertNever(result)
+    } else if (input.type === 'physical') {
+        const business = input.value
+        if (business.name.length > 50) {
+            return new Error(`Business name is too long`)
+        }
+
+        const result = await db.createPhysicalBusiness(business)
+        if (result.type === 'database_error') {
+            return new Error(`Database error: ${result.error.message}`)
+        }
+
+        if (result.type === 'success') {
+            log('info', `Created new business ${result.value.name}`)
+            return
+        }
+
+        assertNever(result)
+    }
+
+    assertNever(input)
 }
 
 export function startServer(
     log: core.Logger,
-    db: core.Repositories
+    db: core.BusinessRepository
 ): StartedServer {
-    const coreOps = new core.Operations(db, log)
-
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
     async function getBusinessHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse,
         businessId: string
     ) {
-        const result = await coreOps.getBusiness(businessId)
-
-        // TODO: We need to distinguish between database errors and business not found errors,
-        // so we can return a 404 in the latter case
-        if (result instanceof Error) {
-            writeNotFoundError(res, result)
+        const parsedBusinessId = safeParseInt(businessId)
+        if (parsedBusinessId === undefined) {
+            writeError(res, new Error('Invalid business id provided'))
             return
         }
 
-        writeJson(res, result)
-        return
+        const result = await db.getBusiness(parsedBusinessId)
+        if (result.type === 'record_not_found') {
+            writeNotFoundError(
+                res,
+                new Error(`Business with id ${businessId} not found`)
+            )
+            return
+        }
+
+        if (result.type === 'database_error') {
+            log('error', result.error.message)
+            writeError(res, new Error('Database error happened'))
+            return
+        }
+
+        if (result.type === 'success') {
+            const business = result.value
+
+            // I prefer to reduce json nesting to keep things simple. The API consumers can tell
+            // which type the business is just by looking at it's "type" property.
+            writeJson(res, {
+                type: business.type,
+                ...business.value,
+            })
+            return
+        }
+
+        assertNever(result)
     }
+
+    const postReviewJson = z.object({
+        text: z.string(),
+        rating: z.number(),
+        username: z.string(),
+    })
 
     async function postReviewHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse,
         businessId: string
-    ) {
+    ): Promise<void> {
+        const parsedBusinessId = safeParseInt(businessId)
+        if (parsedBusinessId === undefined) {
+            writeError(res, new Error('Invalid business id provided'))
+            return
+        }
+
         const jsonData = await parseJson(req)
-        const parseResult = core.createReviewInput.safeParse(jsonData)
+        const parseResult = postReviewJson.safeParse(jsonData)
         if (!parseResult.success) {
-            writeError(res, new Error('Invalid data'))
+            writeError(res, new Error('Invalid data format'))
             return
         }
 
-        const result = await coreOps.createReview(businessId, parseResult.data)
-        if (result instanceof Error) {
-            writeError(res, result)
+        const input = parseResult.data
+
+        if (input.text.length < 20) {
+            writeError(res, new Error('Review text is too short'))
+            return
+        } else if (input.text.length > 500) {
+            writeError(res, new Error('Review text is too long'))
             return
         }
 
-        writeText(res, '')
+        // Rating. Between 1 and 5. Without decimals.
+        if (input.rating < 1 || input.rating > 5) {
+            writeError(res, new Error('Rating is out of range'))
+            return
+        } else if (input.rating % 1 !== 0) {
+            writeError(res, new Error('Rating must be an integer'))
+            return
+        }
+
+        const reviewResult = await db.createReview(parsedBusinessId, input)
+        if (reviewResult.type === 'database_error') {
+            writeError(
+                res,
+                new Error(`Database error: ${reviewResult.error.message}`)
+            )
+            return
+        }
+
+        if (reviewResult.type === 'success') {
+            log('info', `Created new review for business ${businessId}`)
+            res.writeHead(201)
+            res.end()
+            return
+        }
+
+        assertNever(reviewResult)
     }
 
     async function mainHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse
-    ) {
+    ): Promise<void> {
         if (req.url === undefined) throw new Error('no url found')
 
         const url = new URL(req.url, `http://${req.headers.host}`)
@@ -305,5 +337,5 @@ export function startServer(
         })
     }
 
-    return { server, stop: stopServer }
+    return { stop: stopServer }
 }
