@@ -60,6 +60,7 @@ describe('integration tests', () => {
 
             const json = await response.json()
             expect(json).toStrictEqual({
+                type: 'online',
                 id: '1',
                 name: 'test',
                 website: 'test.com',
@@ -78,6 +79,7 @@ describe('integration tests', () => {
 
             const json = await response.json()
             expect(json).toStrictEqual({
+                type: 'physical',
                 id: '2',
                 name: 'test',
                 address: '123 test st',
@@ -130,7 +132,7 @@ describe('integration tests', () => {
                 }
             )
 
-            expect(response.status).toBe(200)
+            expect(response.status).toBe(201)
         }
 
         // get reviews

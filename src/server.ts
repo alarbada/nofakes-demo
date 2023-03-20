@@ -165,7 +165,13 @@ export function startServer(
 
         if (result.type === 'success') {
             const business = result.value
-            writeJson(res, business)
+
+            // I prefer to reduce json nesting to keep things simple. The API consumers can tell
+            // which type the business is just by looking at it's "type" property.
+            writeJson(res, {
+                type: business.type,
+                ...business.value,
+            })
             return
         }
 
