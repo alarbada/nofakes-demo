@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals'
 
 import fetch from 'node-fetch'
 
-import config from '../config.json'
+import config from './config'
 
 import * as core from '../src/core'
 import { startServer } from './server'

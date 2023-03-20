@@ -1,7 +1,8 @@
 import http from 'http'
 import * as net from 'net'
+import { z } from 'zod'
+
 import * as core from './core'
-import * as mongo from 'mongodb'
 import config from './config'
 
 // This little helper function will help us with exhaustiveness type checking
@@ -23,11 +24,6 @@ function writeNotFoundError(res: http.ServerResponse, err: Error) {
 function writeJson(res: http.ServerResponse, json: { [key: string]: any }) {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(json))
-}
-
-function writeText(res: http.ServerResponse, text: string) {
-    res.writeHead(200, { 'Content-Type': 'text/plain' })
-    res.end(text)
 }
 
 function parseJson(req: http.IncomingMessage): Promise<unknown> {
@@ -79,12 +75,73 @@ type StartedServer = {
     stop: () => Promise<void>
 }
 
+// CreateBusinessInput represents the necessary data to create either a physical
+// or an online business
+export type CreateBusinessInput =
+    | {
+          type: 'online'
+          value: {
+              name: string
+              website: string
+              email: string
+          }
+      }
+    | {
+          type: 'physical'
+          value: {
+              name: string
+              address: string
+              phone: string
+              email: string
+          }
+      }
+
+export async function createBusiness(
+    input: CreateBusinessInput,
+    db: core.BusinessRepository,
+    log: core.Logger
+): Promise<void | Error> {
+    if (input.type === 'online') {
+        const business = input.value
+        if (business.name.length > 75) {
+            return new Error(`Business name is too long`)
+        }
+
+        const result = await db.createOnlineBusiness(business)
+        if (result.type === 'database_error') {
+            return new Error(`Database error: ${result.error.message}`)
+        }
+        if (result.type === 'success') {
+            log('info', `Created new business ${result.value.name}`)
+            return
+        }
+        assertNever(result)
+    } else if (input.type === 'physical') {
+        const business = input.value
+        if (business.name.length > 50) {
+            return new Error(`Business name is too long`)
+        }
+
+        const result = await db.createPhysicalBusiness(business)
+        if (result.type === 'database_error') {
+            return new Error(`Database error: ${result.error.message}`)
+        }
+
+        if (result.type === 'success') {
+            log('info', `Created new business ${result.value.name}`)
+            return
+        }
+
+        assertNever(result)
+    }
+
+    assertNever(input)
+}
+
 export function startServer(
     log: core.Logger,
     db: core.BusinessRepository
 ): StartedServer {
-    const coreOps = new core.Operations(db, log)
-
     // getBusinessHandler will try to get a business by id. If the id is invalid, it will return a 400 error.
     async function getBusinessHandler(
         req: http.IncomingMessage,
@@ -115,25 +172,50 @@ export function startServer(
         assertNever(result)
     }
 
+    const postReviewJson = z.object({
+        text: z.string(),
+        rating: z.number(),
+        username: z.string(),
+    })
+
     async function postReviewHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse,
         businessId: string
     ) {
         const jsonData = await parseJson(req)
-        const parseResult = core.createReviewInput.safeParse(jsonData)
+        const parseResult = postReviewJson.safeParse(jsonData)
         if (!parseResult.success) {
-            writeError(res, new Error('Invalid data'))
+            writeError(res, new Error('Invalid data format'))
             return
         }
 
-        const result = await coreOps.createReview(businessId, parseResult.data)
-        if (result instanceof Error) {
-            writeError(res, result)
+        const input = parseResult.data
+
+        if (input.text.length < 20) {
+            return new Error('Review text is too short')
+        } else if (input.text.length > 500) {
+            return new Error('Review text is too long')
+        }
+
+        // Rating. Between 1 and 5. Without decimals.
+        if (input.rating < 1 || input.rating > 5) {
+            return new Error('Rating is out of range')
+        } else if (input.rating % 1 !== 0) {
+            return new Error('Rating must be an integer')
+        }
+
+        const reviewResult = await db.createReview(businessId, input)
+        if (reviewResult.type === 'database_error') {
+            return new Error(`Database error: ${reviewResult.error.message}`)
+        }
+
+        if (reviewResult.type === 'success') {
+            log('info', `Created new review for business ${businessId}`)
             return
         }
 
-        writeText(res, '')
+        assertNever(reviewResult)
     }
 
     async function mainHandler(
