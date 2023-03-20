@@ -4,11 +4,7 @@ import { z } from 'zod'
 
 import * as core from './core'
 import config from './config'
-
-// This little helper function will help us with exhaustiveness type checking
-function assertNever(x: never): never {
-    throw new Error('Unexpected object: ' + x)
-}
+import { assertNever } from './utils'
 
 // The default parseInt returns also NaN, which as the name tells, is not a number.
 // But for some reason for typescirpt it IS a number. Let's better enforce this variant.
@@ -160,7 +156,7 @@ export function startServer(
         const parsedBusinessId = safeParseInt(businessId)
         if (parsedBusinessId === undefined) {
             writeError(res, new Error('Invalid business id provided'))
-            return 
+            return
         }
 
         const result = await db.getBusiness(parsedBusinessId)

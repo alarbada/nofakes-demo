@@ -66,9 +66,9 @@ export type CreatePhysicalBusinessData = {
 }
 
 export type CreateReviewData = {
-    text: string,
-    rating: number,
-    username: string,
+    text: string
+    rating: number
+    username: string
 }
 
 export type BusinessRepository = {
