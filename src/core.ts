@@ -8,6 +8,7 @@ export type OnlineBusiness = {
     website: string
     email: string
     total_reviews: number
+    avg_rating: number
     latest_reviews: Review[]
 }
 
@@ -19,6 +20,7 @@ export type PhysicalBusiness = {
     phone: string
     email: string
     total_reviews: number
+    avg_rating: number
     latest_reviews: Review[]
 }
 

@@ -18,6 +18,7 @@ export function createInMemDb(): core.BusinessRepository {
                 website: data.website,
                 email: data.email,
                 total_reviews: 0,
+                avg_rating: 0,
                 latest_reviews: [],
             }
             businesses.push({ type: 'online', value: business })
@@ -37,6 +38,7 @@ export function createInMemDb(): core.BusinessRepository {
                 phone: data.phone,
                 email: data.email,
                 total_reviews: 0,
+                avg_rating: 0,
                 latest_reviews: [],
             }
             businesses.push({ type: 'physical', value: business })
@@ -92,6 +94,19 @@ export function createInMemDb(): core.BusinessRepository {
 
             business.value.total_reviews += 1
             business.value.latest_reviews.push(newReview)
+
+            const ratingsSum = business.value.latest_reviews.reduce(
+                (prev, curr) => prev + curr.rating,
+                0
+            )
+
+            const totalReviews = business.value.latest_reviews.length
+            let avg_rating = 0
+            if (totalReviews !== 0) {
+                avg_rating = ratingsSum / totalReviews
+            }
+
+            business.value.avg_rating = avg_rating
 
             return { type: 'success', value: newReview }
         },

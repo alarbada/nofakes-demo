@@ -7,7 +7,6 @@ import config from './config'
 import * as core from '../src/core'
 import { startServer } from './server'
 import { createInMemDb } from './inmem_store'
-import { createMongoDbStore } from './mongodb_store'
 
 const testURL = `http://localhost:${config.port}`
 
@@ -15,6 +14,7 @@ describe('inmem store tests', () => {
     // eslint-disable-next-line
     const logger = (_lvl: core.LogLevels, _msg: string) => {}
 
+    // eslint-disable-next-line
     let stopServer = async () => {}
     afterEach(async () => {
         await stopServer()

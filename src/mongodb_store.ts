@@ -30,6 +30,16 @@ type PhysicalBusiness = Omit<core.PhysicalBusiness, 'id'> & {
 
 type MongoBusinessDoc = OnlineBusiness | PhysicalBusiness
 
+function getAvgRating(reviews: core.Review[]): number {
+    const totalReviews = reviews.length
+    if (totalReviews === 0) {
+        return 0
+    }
+
+    const totalRating = reviews.reduce((acc, review) => acc + review.rating, 0)
+    return totalRating / totalReviews
+}
+
 const MongoBusinessCollection = {
     toBusiness(doc: MongoBusinessDoc): core.Business {
         const id = doc._id
@@ -41,8 +51,9 @@ const MongoBusinessCollection = {
             return {
                 type: doc.type,
                 value: {
-                    id: id.toString(),
                     ...doc,
+                    id: id.toString(),
+                    avg_rating: getAvgRating(doc.latest_reviews),
                 },
             }
         }
@@ -50,8 +61,9 @@ const MongoBusinessCollection = {
             return {
                 type: doc.type,
                 value: {
-                    id: id.toString(),
                     ...doc,
+                    id: id.toString(),
+                    avg_rating: getAvgRating(doc.latest_reviews),
                 },
             }
         }
@@ -79,6 +91,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                     website: data.website,
                     email: data.email,
                     total_reviews: 0,
+                    avg_rating: 0,
                     latest_reviews: [],
                 })
 
@@ -90,6 +103,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                         website: data.website,
                         email: data.email,
                         total_reviews: 0,
+                        avg_rating: 0,
                         latest_reviews: [],
                     },
                 }
@@ -109,6 +123,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                     phone: data.phone,
                     email: data.email,
                     total_reviews: 0,
+                    avg_rating: 0,
                     latest_reviews: [],
                 })
 
@@ -121,6 +136,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                         phone: data.phone,
                         email: data.email,
                         total_reviews: 0,
+                        avg_rating: 0,
                         latest_reviews: [],
                     },
                 }
@@ -161,7 +177,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                 const mongoId = mongo.ObjectId.createFromHexString(businessId)
 
                 const query = { _id: mongoId }
-                const result = await businessCol.updateOne(query, {
+                await businessCol.updateOne(query, {
                     $push: { 'latest_reviews.$[]': data },
                 })
 
