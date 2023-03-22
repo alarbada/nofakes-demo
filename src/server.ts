@@ -339,3 +339,16 @@ export function startServer(
 
     return { stop: stopServer }
 }
+
+const nodeEnv = process.env['NODE_ENV']
+
+if (nodeEnv !== 'test') {
+    const devLogger: core.Logger = (lvl, msg) => {
+        console.log(`[${lvl}]: ${msg}`)
+    }
+
+    ;(async () => {
+        const store = await createMongoDbStore()
+        startServer(devLogger, store)
+    })()
+}

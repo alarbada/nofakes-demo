@@ -5,7 +5,6 @@ import config from './config'
 import { assertNever } from './utils'
 
 const url = `mongodb://${config.mongo.user}:${config.mongo.password}@localhost:27017/?retryWrites=true&w=majority`
-console.log(url)
 
 function handleMongoErr(err: unknown) {
     if (err instanceof Error) {

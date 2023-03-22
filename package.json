@@ -4,12 +4,12 @@
   "description": "A simple backend exercise to show programming experience",
   "main": "src/server.ts",
   "scripts": {
-    "start": "node --watch ./dist/server.js",
+    "start": "NODE_ENV=development node --watch ./dist/server.js",
     "debug": "node --inspect ./dist/server.js",
     "dev": "node ./scripts/clean.mjs && node ./scripts/dev.mjs",
     "lint": "eslint src",
     "prettify": "prettier --write src",
-    "test": "jest __tests__",
+    "test": "NODE_ENV=test jest __tests__",
     "test-debug": "node --inspect-brk node_modules/.bin/jest --runInBand __tests__",
     "clean": "node ./scripts/clean.mjs"
   },
