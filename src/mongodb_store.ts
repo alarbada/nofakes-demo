@@ -21,11 +21,11 @@ function handleMongoErr(err: unknown) {
 // https://www.mongodb.com/docs/drivers/node/current/fundamentals/typescript/#working-with-the-_id-field
 type OnlineBusiness = Omit<core.OnlineBusiness, 'id'> & {
     type: 'online'
-    _id?: number
+    _id?: mongo.ObjectId
 }
 type PhysicalBusiness = Omit<core.PhysicalBusiness, 'id'> & {
     type: 'physical'
-    _id?: number
+    _id?: mongo.ObjectId
 }
 
 type MongoBusinessDoc = OnlineBusiness | PhysicalBusiness
@@ -41,7 +41,7 @@ const MongoBusinessCollection = {
             return {
                 type: doc.type,
                 value: {
-                    id,
+                    id: id.toString(),
                     ...doc,
                 },
             }
@@ -50,7 +50,7 @@ const MongoBusinessCollection = {
             return {
                 type: doc.type,
                 value: {
-                    id,
+                    id: id.toString(),
                     ...doc,
                 },
             }
@@ -85,7 +85,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                 return {
                     type: 'success',
                     value: {
-                        id: insertedId,
+                        id: insertedId.toString(),
                         name: data.name,
                         website: data.website,
                         email: data.email,
@@ -115,7 +115,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                 return {
                     type: 'success',
                     value: {
-                        id: insertedId,
+                        id: insertedId.toString(),
                         name: data.name,
                         address: data.address,
                         phone: data.phone,
@@ -130,10 +130,11 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
         },
 
         async getBusiness(
-            id: number
+            id: core.BusinessId
         ): core.RepositoryFetchResult<core.Business> {
             try {
-                const result = await businessCol.findOne({ _id: id })
+                const mongoId = mongo.ObjectId.createFromHexString(id)
+                const result = await businessCol.findOne({ _id: mongoId })
                 if (result === null) {
                     return { type: 'record_not_found' }
                 }
@@ -147,7 +148,7 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
             }
         },
         async createReview(
-            businessId: number,
+            businessId: core.BusinessId,
             data: core.CreateReviewData
         ): core.RepositoryEditResult<core.Review> {
             try {
@@ -157,7 +158,9 @@ export async function createMongoDbStore(): Promise<core.BusinessRepository> {
                     ...data,
                 }
 
-                const query = { _id: businessId }
+                const mongoId = mongo.ObjectId.createFromHexString(businessId)
+
+                const query = { _id: mongoId }
                 const result = await businessCol.updateOne(query, {
                     $push: { 'latest_reviews.$[]': data },
                 })

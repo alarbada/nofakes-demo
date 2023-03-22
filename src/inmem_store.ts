@@ -13,7 +13,7 @@ export function createInMemDb(): core.BusinessRepository {
             businessIdCounter += 1
 
             const business: core.OnlineBusiness = {
-                id: businessIdCounter,
+                id: businessIdCounter.toString(),
                 name: data.name,
                 website: data.website,
                 email: data.email,
@@ -31,7 +31,7 @@ export function createInMemDb(): core.BusinessRepository {
             businessIdCounter += 1
 
             const business: core.PhysicalBusiness = {
-                id: businessIdCounter,
+                id: businessIdCounter.toString(),
                 name: data.name,
                 address: data.address,
                 phone: data.phone,
@@ -45,7 +45,7 @@ export function createInMemDb(): core.BusinessRepository {
         },
 
         async getBusiness(
-            id: number
+            id: core.BusinessId
         ): core.RepositoryFetchResult<core.Business> {
             const inMemBusiness = businesses.find((b) => b.value.id === id)
             if (!inMemBusiness) return { type: 'record_not_found' }
@@ -70,7 +70,7 @@ export function createInMemDb(): core.BusinessRepository {
             return { type: 'success', value: business }
         },
         async createReview(
-            businessId: number,
+            businessId: core.BusinessId,
             data: core.CreateReviewData
         ): core.RepositoryEditResult<core.Review> {
             const business = businesses.find((b) => b.value.id === businessId)

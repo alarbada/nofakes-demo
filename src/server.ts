@@ -152,15 +152,9 @@ export function startServer(
     async function getBusinessHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse,
-        businessId: string
+        businessId: core.BusinessId
     ) {
-        const parsedBusinessId = safeParseInt(businessId)
-        if (parsedBusinessId === undefined) {
-            writeError(res, new Error('Invalid business id provided'))
-            return
-        }
-
-        const result = await db.getBusiness(parsedBusinessId)
+        const result = await db.getBusiness(businessId)
         if (result.type === 'record_not_found') {
             writeNotFoundError(
                 res,
@@ -199,7 +193,7 @@ export function startServer(
     async function postReviewHandler(
         req: http.IncomingMessage,
         res: http.ServerResponse,
-        businessId: string
+        businessId: core.BusinessId
     ): Promise<void> {
         const parsedBusinessId = safeParseInt(businessId)
         if (parsedBusinessId === undefined) {
@@ -233,7 +227,7 @@ export function startServer(
             return
         }
 
-        const reviewResult = await db.createReview(parsedBusinessId, input)
+        const reviewResult = await db.createReview(businessId, input)
         if (reviewResult.type === 'database_error') {
             writeError(
                 res,

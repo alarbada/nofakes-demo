@@ -1,6 +1,9 @@
+// TODO: doc this pls
+export type BusinessId = string
+
 // All data that represents an online business record
 export type OnlineBusiness = {
-    id: number
+    id: BusinessId
     name: string
     website: string
     email: string
@@ -10,7 +13,7 @@ export type OnlineBusiness = {
 
 // All data that represents a physical business record
 export type PhysicalBusiness = {
-    id: number
+    id: BusinessId
     name: string
     address: string
     phone: string
@@ -31,7 +34,7 @@ export type Logger = (lvl: LogLevels, msg: string) => void
 export type Review = {
     // "business_id" is not explicitly defined in the requirements,
     // but we need it in order to get reviews of a business
-    business_id: number
+    business_id: BusinessId
 
     text: string
     rating: number
@@ -79,10 +82,10 @@ export type BusinessRepository = {
         data: CreatePhysicalBusinessData
     ) => RepositoryEditResult<PhysicalBusiness>
 
-    getBusiness: (id: number) => RepositoryFetchResult<Business>
+    getBusiness: (id: BusinessId) => RepositoryFetchResult<Business>
 
     createReview: (
-        businessId: number,
+        businessId: BusinessId,
         data: CreateReviewData
     ) => RepositoryEditResult<Review>
 }
