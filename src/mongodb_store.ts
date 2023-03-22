@@ -72,13 +72,25 @@ const MongoBusinessCollection = {
     },
 }
 
-export async function createMongoDbStore(): Promise<core.BusinessRepository> {
+export async function getBusinessCol(dbName?: string) {
     const client = new mongo.MongoClient(url)
 
     const conn = await client.connect()
+
+    if (dbName === undefined) {
+        dbName = config.mongo.dbName
+    }
+
     const businessCol = conn
-        .db(config.mongo.dbName)
+        .db(dbName)
         .collection<MongoBusinessDoc>('business')
+
+    return businessCol
+}
+
+
+export async function createMongoDbStore(dbName?: string): Promise<core.BusinessRepository> {
+    const businessCol = await getBusinessCol(dbName)
 
     return {
         async createOnlineBusiness(
