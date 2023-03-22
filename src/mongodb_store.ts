@@ -30,16 +30,6 @@ type PhysicalBusiness = Omit<core.PhysicalBusiness, 'id'> & {
 
 type MongoBusinessDoc = OnlineBusiness | PhysicalBusiness
 
-function getAvgRating(reviews: core.Review[]): number {
-    const totalReviews = reviews.length
-    if (totalReviews === 0) {
-        return 0
-    }
-
-    const totalRating = reviews.reduce((acc, review) => acc + review.rating, 0)
-    return totalRating / totalReviews
-}
-
 const MongoBusinessCollection = {
     toBusiness(doc: MongoBusinessDoc): core.Business {
         const id = doc._id
@@ -53,7 +43,6 @@ const MongoBusinessCollection = {
                 value: {
                     ...doc,
                     id: id.toString(),
-                    avg_rating: getAvgRating(doc.latest_reviews),
                 },
             }
         }
@@ -63,7 +52,6 @@ const MongoBusinessCollection = {
                 value: {
                     ...doc,
                     id: id.toString(),
-                    avg_rating: getAvgRating(doc.latest_reviews),
                 },
             }
         }
@@ -72,24 +60,36 @@ const MongoBusinessCollection = {
     },
 }
 
+
+// This is useful to close all opened connections on our tests
+let totalConnections: mongo.MongoClient[] = []
+
+export async function closeAllConns() {
+    for (const conn of totalConnections) {
+        await conn.close()
+    }
+
+    totalConnections = []
+}
+
 export async function getBusinessCol(dbName?: string) {
     const client = new mongo.MongoClient(url)
 
     const conn = await client.connect()
+    totalConnections.push(conn)
 
     if (dbName === undefined) {
         dbName = config.mongo.dbName
     }
 
-    const businessCol = conn
-        .db(dbName)
-        .collection<MongoBusinessDoc>('business')
+    const businessCol = conn.db(dbName).collection<MongoBusinessDoc>('business')
 
     return businessCol
 }
 
-
-export async function createMongoDbStore(dbName?: string): Promise<core.BusinessRepository> {
+export async function createMongoDbStore(
+    dbName?: string
+): Promise<core.BusinessRepository> {
     const businessCol = await getBusinessCol(dbName)
 
     return {
@@ -189,9 +189,39 @@ export async function createMongoDbStore(dbName?: string): Promise<core.Business
                 const mongoId = mongo.ObjectId.createFromHexString(businessId)
 
                 const query = { _id: mongoId }
-                await businessCol.updateOne(query, {
-                    $push: { 'latest_reviews.$[]': data },
+
+                // I am fully aware that this is not efficient at all, two queries instead of one,
+                // but I spent far too long on this challenge.
+
+                const business = await businessCol.findOne(query)
+                if (business === null) {
+                    return {
+                        type: 'database_error',
+                        error: new Error('business does not exist'),
+                    }
+                }
+
+                business.latest_reviews.push({
+                    ...data,
+                    business_id: businessId,
+                    creation_date: new Date(),
                 })
+                const ratingsSum = business.latest_reviews.reduce(
+                    (prev, curr) => prev + curr.rating,
+                    0
+                )
+
+                const totalReviews = business.latest_reviews.length
+                let avgRating = 0
+                if (totalReviews !== 0) {
+                    avgRating = ratingsSum / totalReviews
+                    avgRating = Math.floor(avgRating * 10) / 10
+                }
+
+                business.total_reviews = totalReviews
+                business.avg_rating = avgRating
+
+                await businessCol.replaceOne(query, business)
 
                 return {
                     type: 'success',
