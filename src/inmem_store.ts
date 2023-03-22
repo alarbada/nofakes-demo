@@ -13,11 +13,12 @@ export function createInMemDb(): core.BusinessRepository {
             businessIdCounter += 1
 
             const business: core.OnlineBusiness = {
-                id: businessIdCounter,
+                id: businessIdCounter.toString(),
                 name: data.name,
                 website: data.website,
                 email: data.email,
                 total_reviews: 0,
+                avg_rating: 0,
                 latest_reviews: [],
             }
             businesses.push({ type: 'online', value: business })
@@ -31,12 +32,13 @@ export function createInMemDb(): core.BusinessRepository {
             businessIdCounter += 1
 
             const business: core.PhysicalBusiness = {
-                id: businessIdCounter,
+                id: businessIdCounter.toString(),
                 name: data.name,
                 address: data.address,
                 phone: data.phone,
                 email: data.email,
                 total_reviews: 0,
+                avg_rating: 0,
                 latest_reviews: [],
             }
             businesses.push({ type: 'physical', value: business })
@@ -45,7 +47,7 @@ export function createInMemDb(): core.BusinessRepository {
         },
 
         async getBusiness(
-            id: number
+            id: core.BusinessId
         ): core.RepositoryFetchResult<core.Business> {
             const inMemBusiness = businesses.find((b) => b.value.id === id)
             if (!inMemBusiness) return { type: 'record_not_found' }
@@ -70,7 +72,7 @@ export function createInMemDb(): core.BusinessRepository {
             return { type: 'success', value: business }
         },
         async createReview(
-            businessId: number,
+            businessId: core.BusinessId,
             data: core.CreateReviewData
         ): core.RepositoryEditResult<core.Review> {
             const business = businesses.find((b) => b.value.id === businessId)
@@ -92,6 +94,19 @@ export function createInMemDb(): core.BusinessRepository {
 
             business.value.total_reviews += 1
             business.value.latest_reviews.push(newReview)
+
+            const ratingsSum = business.value.latest_reviews.reduce(
+                (prev, curr) => prev + curr.rating,
+                0
+            )
+
+            const totalReviews = business.value.latest_reviews.length
+            let avg_rating = 0
+            if (totalReviews !== 0) {
+                avg_rating = ratingsSum / totalReviews
+            }
+
+            business.value.avg_rating = avg_rating
 
             return { type: 'success', value: newReview }
         },

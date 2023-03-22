@@ -7,6 +7,7 @@
     "start": "NODE_ENV=development node --watch ./dist/server.js",
     "debug": "node --inspect ./dist/server.js",
     "dev": "node ./scripts/clean.mjs && node ./scripts/dev.mjs",
+    "typecheck": "tsc --noEmit --incremental",
     "lint": "eslint src",
     "prettify": "prettier --write src",
     "test": "NODE_ENV=test jest __tests__",
