@@ -12,8 +12,14 @@ function getEnv(name: string): string {
     return value
 }
 
+// This prevents port conflicts when runnint the dev api server and the integration tests
+let port = getEnv('SERVER_PORT')
+if (process.env['NODE_ENV'] === 'test') {
+    port += 1
+}
+
 export default {
-    port: getEnv('SERVER_PORT'),
+    port,
     mongo: {
         dbName: getEnv('MONGO_DATABASE'),
         user: getEnv('MONGO_USER'),
