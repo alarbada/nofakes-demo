@@ -104,6 +104,7 @@ export function createInMemDb(): core.BusinessRepository {
             let avg_rating = 0
             if (totalReviews !== 0) {
                 avg_rating = ratingsSum / totalReviews
+                avg_rating = Math.floor(avg_rating * 10) / 10
             }
 
             business.value.avg_rating = avg_rating

@@ -7,6 +7,7 @@ import config from './config'
 import * as core from '../src/core'
 import { startServer } from './server'
 import { createInMemDb } from './inmem_store'
+import { createMongoDbStore, getBusinessCol, closeAllConns } from './mongodb_store'
 
 const testURL = `http://localhost:${config.port}`
 
@@ -67,6 +68,7 @@ describe('inmem store tests', () => {
                 website: 'test.com',
                 email: 'test@test.com',
                 total_reviews: 0,
+                avg_rating: 0,
                 latest_reviews: [],
             })
         }
@@ -87,6 +89,7 @@ describe('inmem store tests', () => {
                 phone: '1234567890',
                 email: 'test@test.com',
                 total_reviews: 0,
+                avg_rating: 0,
                 latest_reviews: [],
             })
         }
@@ -113,14 +116,11 @@ describe('inmem store tests', () => {
             creation_date: new Date(),
         })
 
-        const created = []
-
-        for (let rating = 1; rating <= 5; rating++) {
+        for (const rating of [1, 3, 4, 5]) {
             // sleep 5 ms to allow for differnt creation dates
             await new Promise((resolve) => setTimeout(resolve, 5))
 
             const review = createReview(rating)
-            created.push(review)
 
             const response = await fetch(
                 `${testURL}/business/${onlineBusinessRes.value.id}/reviews`,
@@ -148,8 +148,118 @@ describe('inmem store tests', () => {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const json: any = await response.json()
+        expect(json.avg_rating).toBe(3.2)
         expect(json.latest_reviews[0].rating).toBe(5)
         expect(json.latest_reviews[1].rating).toBe(4)
         expect(json.latest_reviews[2].rating).toBe(3)
+    })
+})
+
+describe('mongodb store tests', () => {
+
+    afterAll(async () => {
+        await closeAllConns()
+    })
+
+    test('All methods properly work', async () => {
+        const testDbName = `${config.mongo.dbName}_test`
+
+        // cleanup results from previous tests
+        {
+            const col = await getBusinessCol(testDbName)
+            await col.deleteMany()
+        }
+
+        const store = await createMongoDbStore(testDbName)
+
+        const physicalBusinessInput = {
+            address: '123 test st',
+            phone: '1234567890',
+            email: 'test@test.com',
+            name: 'test physical business',
+        }
+
+        const physicalBusiness = await (async () => {
+            const res = await store.createPhysicalBusiness(
+                physicalBusinessInput
+            )
+            if (res.type === 'database_error') throw res.error
+
+            return res.value
+        })()
+
+        expect(physicalBusiness).toMatchObject(physicalBusinessInput)
+
+        const onlineBusinessInput = {
+            website: 'www.test.com',
+            email: 'test@test.com',
+            name: 'test online business',
+        }
+
+        const onlineBusiness = await (async () => {
+            const res = await store.createOnlineBusiness(onlineBusinessInput)
+            if (res.type === 'database_error') throw res.error
+
+            return res.value
+        })()
+
+        expect(onlineBusiness).toMatchObject(onlineBusinessInput)
+
+        {
+            const res = await store.createReview(onlineBusiness.id, {
+                text: 'test review',
+                rating: 5,
+                username: 'test user',
+            })
+            if (res.type === 'database_error') throw res.error
+        }
+        {
+            const res = await store.createReview(onlineBusiness.id, {
+                text: 'test review',
+                rating: 3,
+                username: 'test user',
+            })
+            if (res.type === 'database_error') throw res.error
+        }
+        {
+            const res = await store.createReview(onlineBusiness.id, {
+                text: 'test review',
+                rating: 3,
+                username: 'test user',
+            })
+            if (res.type === 'database_error') throw res.error
+        }
+
+        {
+            const businessRes = await store.getBusiness(onlineBusiness.id)
+            if (businessRes.type === 'database_error') throw businessRes.error
+            if (businessRes.type === 'record_not_found')
+                throw new Error('unreachable')
+
+            const business = businessRes.value
+
+            expect(business.value).toMatchObject({
+                ...onlineBusiness,
+                total_reviews: 3,
+                latest_reviews: [
+                    {
+                        rating: 5,
+                        text: 'test review',
+                        username: 'test user',
+                    },
+                    {
+                        rating: 3,
+                        text: 'test review',
+                        username: 'test user',
+                    },
+                    {
+                        rating: 3,
+                        text: 'test review',
+                        username: 'test user',
+                    },
+                ],
+                avg_rating: 3.6,
+            })
+        }
     })
 })
